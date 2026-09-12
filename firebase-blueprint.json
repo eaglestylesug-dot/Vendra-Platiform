@@ -1,0 +1,183 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User account information and profile data",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "phone": { "type": "string", "maxLength": 32 },
+        "username": { "type": "string", "maxLength": 64 },
+        "fullName": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 120 },
+        "role": { "type": "string", "enum": ["user", "admin", "super_admin"] },
+        "vip_level": { "type": "string", "maxLength": 20 },
+        "referral_code": { "type": "string", "maxLength": 32 },
+        "referred_by_id": { "type": "string", "maxLength": 64 },
+        "status": { "type": "string", "enum": ["active", "suspended"] },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["id", "phone", "role", "referral_code", "status", "created_at"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Commercial equipment investment packages",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 120 },
+        "category": { "type": "string", "maxLength": 64 },
+        "image_url": { "type": "string", "maxLength": 500 },
+        "vip_level": { "type": "string", "maxLength": 20 },
+        "price": { "type": "number" },
+        "duration_days": { "type": "number" },
+        "daily_income": { "type": "number" },
+        "total_revenue": { "type": "number" },
+        "return_rate": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "locked", "sold_out"] },
+        "purchase_limit": { "type": "number" },
+        "description": { "type": "string", "maxLength": 1000 },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "name", "price", "duration_days", "status", "created_at"]
+    },
+    "ProductPurchase": {
+      "title": "ProductPurchase",
+      "description": "Active user equipment leases and yield tracking",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "user_id": { "type": "string", "maxLength": 64 },
+        "product_id": { "type": "string", "maxLength": 64 },
+        "product_name": { "type": "string", "maxLength": 120 },
+        "amount_paid": { "type": "number" },
+        "duration_days": { "type": "number" },
+        "daily_income": { "type": "number" },
+        "start_date": { "type": "string" },
+        "end_date": { "type": "string" },
+        "status": { "type": "string", "enum": ["ACTIVE", "COMPLETED", "CANCELLED"] },
+        "total_accrued_reward": { "type": "number" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "user_id", "product_id", "amount_paid", "status", "created_at"]
+    },
+    "Deposit": {
+      "title": "Deposit",
+      "description": "Mobile Money incoming deposit records",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "user_id": { "type": "string", "maxLength": 64 },
+        "amount": { "type": "number" },
+        "provider": { "type": "string", "enum": ["MTN_MOMO", "AIRTEL_MONEY", "PESAPAL"] },
+        "phone_number": { "type": "string", "maxLength": 32 },
+        "reference": { "type": "string", "maxLength": 64 },
+        "status": { "type": "string", "enum": ["PENDING", "CONFIRMED", "FAILED", "EXPIRED", "REJECTED"] },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "user_id", "amount", "provider", "phone_number", "status", "created_at"]
+    },
+    "Withdrawal": {
+      "title": "Withdrawal",
+      "description": "User withdrawal payout requests",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "user_id": { "type": "string", "maxLength": 64 },
+        "amount": { "type": "number" },
+        "provider": { "type": "string", "enum": ["MTN_MOMO", "AIRTEL_MONEY", "PESAPAL"] },
+        "phone_number": { "type": "string", "maxLength": 32 },
+        "reference": { "type": "string", "maxLength": 64 },
+        "status": { "type": "string", "enum": ["PENDING", "APPROVED", "REJECTED", "PAID", "REQUIRES_VERIFICATION"] },
+        "admin_notes": { "type": "string", "maxLength": 500 },
+        "requested_at": { "type": "string" }
+      },
+      "required": ["id", "user_id", "amount", "provider", "phone_number", "status", "requested_at"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Immutable ledger accounting transactions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "user_id": { "type": "string", "maxLength": 64 },
+        "amount": { "type": "number" },
+        "transaction_type": { "type": "string", "maxLength": 64 },
+        "reference": { "type": "string", "maxLength": 64 },
+        "status": { "type": "string", "enum": ["PENDING", "SUCCESSFUL", "FAILED", "REVERSED"] },
+        "source": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 255 },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "user_id", "amount", "transaction_type", "reference", "status", "created_at"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Direct user messages and system notifications",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "user_id": { "type": "string", "maxLength": 64 },
+        "title": { "type": "string", "maxLength": 120 },
+        "message": { "type": "string", "maxLength": 1000 },
+        "type": { "type": "string", "maxLength": 50 },
+        "is_read": { "type": "boolean" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "user_id", "title", "message", "is_read", "created_at"]
+    },
+    "SupportTicket": {
+      "title": "SupportTicket",
+      "description": "Customer service tickets",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "user_id": { "type": "string", "maxLength": 64 },
+        "ticket_number": { "type": "string", "maxLength": 64 },
+        "category": { "type": "string", "enum": ["deposit", "withdrawal", "account", "product", "general"] },
+        "subject": { "type": "string", "maxLength": 150 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+        "status": { "type": "string", "enum": ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"] },
+        "admin_response": { "type": "string", "maxLength": 2000 },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "user_id", "ticket_number", "category", "subject", "description", "status", "created_at"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and account data"
+    },
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Investment products catalog"
+    },
+    "/product_purchases/{purchaseId}": {
+      "schema": "ProductPurchase",
+      "description": "User active equipment leases"
+    },
+    "/deposits/{depositId}": {
+      "schema": "Deposit",
+      "description": "User deposit requests"
+    },
+    "/withdrawals/{withdrawalId}": {
+      "schema": "Withdrawal",
+      "description": "User withdrawal requests"
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Financial ledger transactions"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User notification items"
+    },
+    "/support_tickets/{ticketId}": {
+      "schema": "SupportTicket",
+      "description": "Customer support requests"
+    }
+  }
+}

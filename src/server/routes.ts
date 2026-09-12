@@ -142,6 +142,69 @@ router.post('/auth/login', (req: Request, res: Response) => {
   }
 });
 
+router.post('/auth/firebase-login', (req: Request, res: Response) => {
+  try {
+    const { uid, email, displayName, photoURL } = req.body;
+    if (!uid) {
+      return res.status(400).json({ error: 'Firebase UID is required.' });
+    }
+
+    // Check if user exists by email or uid
+    let user = email ? db.getUserByEmail(email) : null;
+    if (!user) {
+      user = db.getUserById(uid) || db.getUserByUsernameOrPhone(uid);
+    }
+
+    const isAdminEmail = email && email.toLowerCase() === 'eaglestylesug@gmail.com';
+
+    if (!user) {
+      // Auto-create user from Firebase authenticated account
+      const generatedPhone = '+2567' + Math.floor(10000000 + Math.random() * 90000000);
+      const salt = bcrypt.genSaltSync(10);
+      const passwordHash = bcrypt.hashSync('firebase_auth_' + uid, salt);
+
+      const created = db.createUser(
+        generatedPhone,
+        passwordHash,
+        displayName || email?.split('@')[0] || 'Vendra Member',
+        undefined
+      );
+      user = created.user;
+      if (email && created.profile) {
+        created.profile.email = email;
+      }
+      if (photoURL && created.profile) {
+        created.profile.avatar_url = photoURL;
+      }
+      if (isAdminEmail) {
+        user.role = 'admin';
+      }
+    } else if (isAdminEmail && user.role !== 'admin' && user.role !== 'super_admin') {
+      user.role = 'admin';
+    }
+
+    const token = generateToken(user);
+    const profile = db.getProfileByUserId(user.id);
+    const summary = db.calculateUserFinancialSummary(user.id);
+
+    return res.json({
+      token,
+      user: {
+        id: user.id,
+        phone: user.phone,
+        username: user.username,
+        role: user.role,
+        referral_code: user.referral_code,
+        status: user.status
+      },
+      profile,
+      summary
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Firebase login failed.' });
+  }
+});
+
 router.post('/admin/login', (req: Request, res: Response) => {
   try {
     const { username, password } = req.body;

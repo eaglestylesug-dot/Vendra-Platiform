@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User, UserProfile, UserFinancialSummary } from '../types/index.ts';
+import { auth, googleProvider, signInWithPopup, signOut } from '../firebase.ts';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 
 interface AuthContextType {
   token: string | null;
@@ -9,7 +11,9 @@ interface AuthContextType {
   unreadCount: number;
   isLoading: boolean;
   isAdmin: boolean;
+  firebaseUser: FirebaseUser | null;
   login: (phone: string, password: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   adminLogin: (username: string, password: string) => Promise<void>;
   register: (phone: string, fullName: string, password: string, referralCode?: string) => Promise<void>;
   claimOwnerRole: (username?: string, password?: string) => Promise<void>;
@@ -34,6 +38,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [summary, setSummary] = useState<UserFinancialSummary>(defaultSummary);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+
+  // Monitor Firebase Auth state
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, fbUser => {
+      setFirebaseUser(fbUser);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const refreshUserData = useCallback(async () => {
     const storedToken = localStorage.getItem('vendra_auth_token');
@@ -161,12 +174,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await refreshUserData();
   };
 
+  const loginWithGoogle = async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const fbUser = result.user;
+
+      const res = await fetch('/api/auth/firebase-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uid: fbUser.uid,
+          email: fbUser.email,
+          displayName: fbUser.displayName,
+          photoURL: fbUser.photoURL
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Google authentication failed.');
+      }
+
+      localStorage.setItem('vendra_auth_token', data.token);
+      setToken(data.token);
+      setUser(data.user);
+      setProfile(data.profile);
+      setSummary(data.summary || defaultSummary);
+    } catch (err: any) {
+      console.error('[Firebase Auth] Error:', err);
+      throw new Error(err.message || 'Failed to sign in with Google.');
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('vendra_auth_token');
     setToken(null);
     setUser(null);
     setProfile(null);
     setSummary(defaultSummary);
+    signOut(auth).catch(() => {});
   };
 
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
@@ -181,7 +227,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         unreadCount,
         isLoading,
         isAdmin,
+        firebaseUser,
         login,
+        loginWithGoogle,
         adminLogin,
         register,
         claimOwnerRole,

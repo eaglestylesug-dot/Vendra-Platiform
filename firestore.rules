@@ -1,0 +1,107 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global helpers
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        (request.auth.token.email == 'eaglestylesug@gmail.com' && request.auth.token.email_verified == true) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Connection test document
+    match /test/connection {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Admins registry
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
+      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Products collection (Marketplace)
+    match /products/{productId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Product purchases
+    match /product_purchases/{purchaseId} {
+      allow get: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.user_id == request.auth.uid && isValidId(purchaseId);
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // Deposits
+    match /deposits/{depositId} {
+      allow get: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.user_id == request.auth.uid && isValidId(depositId);
+      allow update, delete: if isAdmin();
+    }
+
+    // Withdrawals
+    match /withdrawals/{withdrawalId} {
+      allow get: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.user_id == request.auth.uid && isValidId(withdrawalId);
+      allow update, delete: if isAdmin();
+    }
+
+    // Transactions
+    match /transactions/{transactionId} {
+      allow get: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+      allow get: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow update: if isSignedIn() && resource.data.user_id == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['is_read']);
+      allow create, delete: if isAdmin();
+    }
+
+    // Support tickets
+    match /support_tickets/{ticketId} {
+      allow get: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.user_id == request.auth.uid && isValidId(ticketId);
+      allow update: if (isSignedIn() && resource.data.user_id == request.auth.uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
+  }
+}

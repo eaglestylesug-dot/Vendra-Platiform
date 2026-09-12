@@ -576,6 +576,15 @@ class RelationalDatabase {
     return this.store.users.find(u => u.referral_code.toUpperCase() === code.toUpperCase());
   }
 
+  public getUserByEmail(email: string): User | undefined {
+    const cleanEmail = email.trim().toLowerCase();
+    const profile = this.store.profiles.find(p => p.email && p.email.trim().toLowerCase() === cleanEmail);
+    if (profile) {
+      return this.getUserById(profile.user_id);
+    }
+    return undefined;
+  }
+
   public getProfileByUserId(userId: string): UserProfile | undefined {
     return this.store.profiles.find(p => p.user_id === userId);
   }
