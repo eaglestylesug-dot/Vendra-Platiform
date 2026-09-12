@@ -1,0 +1,6 @@
+{
+  "name": "VENDRA",
+  "description": "Commercial investment platform featuring VENDRA equipment leasing, verified Mobile Money deposits, 180-day automated daily yields, and real-time referral management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

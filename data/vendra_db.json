@@ -1,0 +1,224 @@
+{
+  "users": [
+    {
+      "id": "VEN-ADM-001",
+      "phone": "+256700000001",
+      "password_hash": "$2b$10$5v.PwruIEy2ME9XZYF8NXeMLrS1K/2FlvYp.LHLP77iggvuoEaCc.",
+      "role": "super_admin",
+      "referral_code": "VENADMIN",
+      "referred_by_id": null,
+      "status": "active",
+      "created_at": "2026-09-06T19:33:14.268Z",
+      "updated_at": "2026-09-06T19:33:14.268Z"
+    },
+    {
+      "id": "VEN-655397",
+      "phone": "+256779998877",
+      "password_hash": "$2b$10$FIAE7d.Z32NvOvas4kAPDOPRzgUQDSpJn.hz9BCNl3memf/l5nXbO",
+      "role": "user",
+      "referral_code": "VEN6296",
+      "referred_by_id": null,
+      "status": "active",
+      "created_at": "2026-09-06T20:19:33.206Z",
+      "updated_at": "2026-09-06T20:19:33.206Z"
+    }
+  ],
+  "profiles": [
+    {
+      "id": "prof-adm-001",
+      "user_id": "VEN-ADM-001",
+      "full_name": "VENDRA Platform Administrator",
+      "email": "admin@vendra.finance",
+      "nin_number": "CM84029104829",
+      "kyc_status": "verified",
+      "momo_provider": "MTN_MOMO",
+      "momo_number": "+256700000001",
+      "avatar_url": null,
+      "updated_at": "2026-09-06T19:33:14.268Z"
+    },
+    {
+      "id": "prof-1788725973206",
+      "user_id": "VEN-655397",
+      "full_name": "PesaPal Tester",
+      "email": null,
+      "nin_number": null,
+      "kyc_status": "unverified",
+      "momo_provider": "MTN_MOMO",
+      "momo_number": "+256779998877",
+      "avatar_url": null,
+      "updated_at": "2026-09-06T20:19:33.206Z"
+    }
+  ],
+  "products": [
+    {
+      "id": "prod-solar-001",
+      "name": "EcoPower Solar Micro-Grid Unit",
+      "category": "Clean Energy Equipment",
+      "price": 10000,
+      "duration_days": 7,
+      "return_rate": 0.018,
+      "return_type": "daily_percentage",
+      "status": "active",
+      "purchase_limit": 5,
+      "description": "Supports distributed photovoltaic mini-inverter deployment for off-grid rural trading centers. Generates daily equipment operating fee yields based on real power metering.",
+      "eligibility_tier": "STANDARD",
+      "created_at": "2026-09-06T19:33:14.182Z",
+      "updated_at": "2026-09-06T19:33:14.182Z"
+    },
+    {
+      "id": "prod-chiller-002",
+      "name": "Cold-Chain Dairy Chiller Lease",
+      "category": "Agro-Processing Logistics",
+      "price": 25000,
+      "duration_days": 14,
+      "return_rate": 0.022,
+      "return_type": "daily_percentage",
+      "status": "active",
+      "purchase_limit": 4,
+      "description": "Commercial bulk milk cooling tanks deployed across agricultural collection cooperatives in Mbarara and Kiruhura. Operational return based on measured milk volume preservation fees.",
+      "eligibility_tier": "STANDARD",
+      "created_at": "2026-09-06T19:33:14.182Z",
+      "updated_at": "2026-09-06T19:33:14.182Z"
+    },
+    {
+      "id": "prod-grain-003",
+      "name": "Agri-Grain Silo Milling Node",
+      "category": "Post-Harvest Infrastructure",
+      "price": 50000,
+      "duration_days": 30,
+      "return_rate": 0.025,
+      "return_type": "daily_percentage",
+      "status": "active",
+      "purchase_limit": 3,
+      "description": "Automated maize and grain cleaning, bagging, and storage facility in Eastern Uganda. Operating yields tied to contracted seasonal storage and grain drying throughput.",
+      "eligibility_tier": "VIP_BRONZE",
+      "created_at": "2026-09-06T19:33:14.182Z",
+      "updated_at": "2026-09-06T19:33:14.182Z"
+    },
+    {
+      "id": "prod-emobility-004",
+      "name": "Kampala E-Mobility Fleet Charger",
+      "category": "Urban Transport Tech",
+      "price": 100000,
+      "duration_days": 45,
+      "return_rate": 0.028,
+      "return_type": "daily_percentage",
+      "status": "active",
+      "purchase_limit": 2,
+      "description": "High-speed commercial battery swap & charging stations for electric motorcycle taxis (boda-bodas) operating in central Kampala commercial corridors.",
+      "eligibility_tier": "VIP_SILVER",
+      "created_at": "2026-09-06T19:33:14.182Z",
+      "updated_at": "2026-09-06T19:33:14.182Z"
+    },
+    {
+      "id": "prod-telecom-005",
+      "name": "Regional Telecom Repeater Tower",
+      "category": "Digital Infrastructure",
+      "price": 250000,
+      "duration_days": 60,
+      "return_rate": 0.03,
+      "return_type": "daily_percentage",
+      "status": "active",
+      "purchase_limit": 1,
+      "description": "Off-grid cellular relay tower and satellite backhaul transceiver powering digital Mobile Money connectivity in western border commercial outposts.",
+      "eligibility_tier": "VIP_GOLD",
+      "created_at": "2026-09-06T19:33:14.182Z",
+      "updated_at": "2026-09-06T19:33:14.182Z"
+    }
+  ],
+  "product_purchases": [],
+  "deposits": [
+    {
+      "id": "dep-1788725973224",
+      "user_id": "VEN-655397",
+      "amount": 25000,
+      "provider": "PESAPAL",
+      "phone_number": "+256779998877",
+      "reference": "DEP-1788725973224-415",
+      "gateway_reference": "bbe0bc60-4034-4d0b-a361-d9ef79e8609d",
+      "pesapal_order_tracking_id": "bbe0bc60-4034-4d0b-a361-d9ef79e8609d",
+      "pesapal_redirect_url": "https://pay.pesapal.com/iframe/PesapalIframe3/Index?OrderTrackingId=bbe0bc60-4034-4d0b-a361-d9ef79e8609d",
+      "status": "PENDING",
+      "created_at": "2026-09-06T20:19:33.224Z",
+      "confirmed_at": null
+    }
+  ],
+  "withdrawals": [],
+  "transactions": [
+    {
+      "id": "tx-1788725973224-5031",
+      "user_id": "VEN-655397",
+      "amount": 25000,
+      "transaction_type": "DEPOSIT",
+      "reference": "DEP-1788725973224-415",
+      "status": "PENDING",
+      "source": "PESAPAL_GATEWAY",
+      "description": "Deposit via PesaPal (Card / MoMo / Airtel) (+256779998877)",
+      "audit_info": "{\"provider\":\"PESAPAL\",\"phoneNumber\":\"+256779998877\",\"gatewayRef\":\"GW-DEP-1788725973224-415\"}",
+      "created_at": "2026-09-06T20:19:33.224Z"
+    }
+  ],
+  "referral_relationships": [],
+  "referral_rewards": [],
+  "notifications": [
+    {
+      "id": "notif-1788725973206-615",
+      "user_id": "VEN-655397",
+      "title": "Welcome to VENDRA",
+      "message": "Your financial account has been successfully created. Explore our asset-backed investment products and get started with verified Mobile Money.",
+      "type": "announcement",
+      "is_read": false,
+      "link": null,
+      "created_at": "2026-09-06T20:19:33.206Z"
+    }
+  ],
+  "support_tickets": [],
+  "admin_users": [
+    {
+      "id": "adm-rec-001",
+      "user_id": "VEN-ADM-001",
+      "role": "super_admin",
+      "permissions": [
+        "all",
+        "manage_withdrawals",
+        "manage_products",
+        "manage_settings",
+        "audit"
+      ],
+      "created_at": "2026-09-06T19:33:14.268Z"
+    }
+  ],
+  "audit_logs": [
+    {
+      "id": "audit-1788725973224-859",
+      "actor_id": "VEN-655397",
+      "actor_role": "user",
+      "action": "DEPOSIT_INITIATED",
+      "entity_type": "deposits",
+      "entity_id": "dep-1788725973224",
+      "details": "Initiated UGX 25000 deposit via PESAPAL",
+      "ip_address": "127.0.0.1",
+      "created_at": "2026-09-06T20:19:33.224Z"
+    },
+    {
+      "id": "audit-1788725973207-257",
+      "actor_id": "VEN-655397",
+      "actor_role": "user",
+      "action": "USER_REGISTERED",
+      "entity_type": "users",
+      "entity_id": "VEN-655397",
+      "details": "User registered with phone +256779998877",
+      "ip_address": "127.0.0.1",
+      "created_at": "2026-09-06T20:19:33.207Z"
+    }
+  ],
+  "platform_settings": {
+    "min_deposit_ugx": "10000",
+    "min_withdrawal_ugx": "5000",
+    "l1_referral_percentage": "5.0",
+    "l2_referral_percentage": "2.0",
+    "referral_eligibility_min_deposit": "10000",
+    "maintenance_mode": "false",
+    "momo_gateway_mode": "sandbox"
+  }
+}
