@@ -142,26 +142,27 @@ router.post('/auth/login', (req: Request, res: Response) => {
   }
 });
 
-router.post('/auth/firebase-login', (req: Request, res: Response) => {
+router.post(['/auth/supabase-login', '/auth/firebase-login'], (req: Request, res: Response) => {
   try {
-    const { uid, email, displayName, photoURL } = req.body;
-    if (!uid) {
-      return res.status(400).json({ error: 'Firebase UID is required.' });
+    const { id, uid, email, displayName, photoURL, avatar_url } = req.body;
+    const userId = id || uid;
+    if (!userId && !email) {
+      return res.status(400).json({ error: 'Supabase User identifier or email is required.' });
     }
 
     // Check if user exists by email or uid
     let user = email ? db.getUserByEmail(email) : null;
-    if (!user) {
-      user = db.getUserById(uid) || db.getUserByUsernameOrPhone(uid);
+    if (!user && userId) {
+      user = db.getUserById(userId) || db.getUserByUsernameOrPhone(userId);
     }
 
     const isAdminEmail = email && email.toLowerCase() === 'eaglestylesug@gmail.com';
 
     if (!user) {
-      // Auto-create user from Firebase authenticated account
+      // Auto-create user from Supabase authenticated account
       const generatedPhone = '+2567' + Math.floor(10000000 + Math.random() * 90000000);
       const salt = bcrypt.genSaltSync(10);
-      const passwordHash = bcrypt.hashSync('firebase_auth_' + uid, salt);
+      const passwordHash = bcrypt.hashSync('supa_auth_' + (userId || email), salt);
 
       const created = db.createUser(
         generatedPhone,
@@ -173,8 +174,9 @@ router.post('/auth/firebase-login', (req: Request, res: Response) => {
       if (email && created.profile) {
         created.profile.email = email;
       }
-      if (photoURL && created.profile) {
-        created.profile.avatar_url = photoURL;
+      const avatar = avatar_url || photoURL;
+      if (avatar && created.profile) {
+        created.profile.avatar_url = avatar;
       }
       if (isAdminEmail) {
         user.role = 'admin';
@@ -201,7 +203,7 @@ router.post('/auth/firebase-login', (req: Request, res: Response) => {
       summary
     });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message || 'Firebase login failed.' });
+    return res.status(500).json({ error: err.message || 'Supabase authentication failed.' });
   }
 });
 

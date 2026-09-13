@@ -18,9 +18,11 @@ import {
   UserFinancialSummary
 } from '../types/index.ts';
 
-// In-process persistent storage path
-const DATA_DIR = path.join(process.cwd(), 'data');
+// In-process persistent storage path with Vercel serverless /tmp support
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const DATA_DIR = isServerless ? path.join('/tmp', 'data') : path.join(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'vendra_db.json');
+const BUNDLED_DB_FILE = path.join(process.cwd(), 'data', 'vendra_db.json');
 
 interface DatabaseStore {
   users: User[];
@@ -249,6 +251,15 @@ class RelationalDatabase {
           ...parsed,
           platform_settings: { ...DEFAULT_SETTINGS, ...(parsed.platform_settings || {}) }
         };
+      } else if (fs.existsSync(BUNDLED_DB_FILE)) {
+        const raw = fs.readFileSync(BUNDLED_DB_FILE, 'utf-8');
+        const parsed = JSON.parse(raw);
+        this.store = {
+          ...this.store,
+          ...parsed,
+          platform_settings: { ...DEFAULT_SETTINGS, ...(parsed.platform_settings || {}) }
+        };
+        this.persist();
       } else {
         // First boot: Seed products and default admin
         this.store.products = [...DEFAULT_PRODUCTS];
