@@ -21,6 +21,7 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({ onClose }) => {
     { key: 'WITHDRAWAL', label: 'Withdrawals' },
     { key: 'PRODUCT_PURCHASE', label: 'Purchases' },
     { key: 'PRODUCT_REWARD', label: 'Yields' },
+    { key: 'GIFT_CODE_CREDIT', label: 'Gift Codes' },
     { key: 'REFERRAL_REWARD', label: 'Referrals' },
     { key: 'ADJUSTMENT', label: 'Adjustments' }
   ];
@@ -71,6 +72,7 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({ onClose }) => {
       case 'DEPOSIT':
       case 'PRODUCT_REWARD':
       case 'REFERRAL_REWARD':
+      case 'GIFT_CODE_CREDIT':
       case 'ADJUSTMENT_CREDIT':
       case 'WITHDRAWAL_REFUND':
         return {

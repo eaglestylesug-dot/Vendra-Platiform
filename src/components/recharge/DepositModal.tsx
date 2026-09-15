@@ -22,7 +22,7 @@ interface DepositModalProps {
 export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }) => {
   const { user, profile, token, refreshUserData } = useAuth();
 
-  const [amount, setAmount] = useState<number>(500);
+  const [amount, setAmount] = useState<number>(15000);
   const [customAmount, setCustomAmount] = useState<string>('');
   const [phoneNumber, setPhoneNumber] = useState<string>(user?.phone || '');
   const [email, setEmail] = useState<string>(profile?.email || '');
@@ -44,7 +44,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }
   const [pesapalCompleted, setPesapalCompleted] = useState(false);
   const [showEmbeddedIframe, setShowEmbeddedIframe] = useState(false);
 
-  const presetAmounts = [500, 2000, 5000, 10000, 25000, 50000];
+  const presetAmounts = [15000, 30000, 50000, 100000, 250000, 500000];
 
   // Auto-poll PesaPal status while modal is waiting on PesaPal checkout
   useEffect(() => {
@@ -92,8 +92,8 @@ export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }
     e.preventDefault();
     const finalAmount = customAmount ? parseFloat(customAmount) : amount;
 
-    if (isNaN(finalAmount) || finalAmount < 500) {
-      setError('Minimum recharge is UGX 500.');
+    if (isNaN(finalAmount) || finalAmount < 15000) {
+      setError('Minimum deposit is UGX 15,000. Users cannot deposit less than UGX 15,000.');
       return;
     }
 
@@ -303,7 +303,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }
                   Select Recharge Amount
                 </label>
                 <span className="text-[10px] text-orange-600 dark:text-orange-400 font-semibold">
-                  Min: UGX 500
+                  Min: UGX 15,000
                 </span>
               </div>
 
@@ -332,8 +332,8 @@ export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }
               <div className="relative">
                 <input
                   type="number"
-                  min="500"
-                  step="100"
+                  min="15000"
+                  step="1000"
                   value={customAmount}
                   onChange={e => {
                     setCustomAmount(e.target.value);
@@ -341,7 +341,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }
                       setAmount(parseFloat(e.target.value) || 0);
                     }
                   }}
-                  placeholder="Or enter custom amount (Min: 500 UGX)"
+                  placeholder="Or enter custom amount (Min: UGX 15,000)"
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-orange-500"
                 />
                 <span className="absolute right-3.5 top-2.5 text-xs text-slate-400 font-bold">UGX</span>

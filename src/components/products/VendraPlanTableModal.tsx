@@ -11,74 +11,56 @@ export interface VendraPlanTableModalProps {
 export const VENDRA_PLANS_DATA = [
   {
     vip: 'VIP1',
-    product: 'VENDRA MINI 01',
-    price: 10000,
+    product: 'Bread & Milk Combo',
+    price: 15000,
     dailyIncome: 3000,
-    totalRevenue: 540000,
-    days: 180,
+    totalRevenue: 270000,
+    days: 90,
     highlight: false
   },
   {
     vip: 'VIP2',
-    product: 'VENDRA MINI 02',
-    price: 50000,
-    dailyIncome: 15000,
-    totalRevenue: 2700000,
-    days: 180,
+    product: 'Rice Bag 5kg',
+    price: 30000,
+    dailyIncome: 4800,
+    totalRevenue: 432000,
+    days: 90,
     highlight: false
   },
   {
     vip: 'VIP3',
-    product: 'VENDRA 4K 01',
-    price: 120000,
-    dailyIncome: 37200,
-    totalRevenue: 6696000,
-    days: 180,
+    product: 'Cooking Oil 5L',
+    price: 50000,
+    dailyIncome: 9320,
+    totalRevenue: 559200,
+    days: 60,
     highlight: true
   },
   {
     vip: 'VIP4',
-    product: 'VENDRA 4K 02',
-    price: 250000,
-    dailyIncome: 77500,
-    totalRevenue: 13950000,
-    days: 180,
+    product: 'Full Grocery Kit',
+    price: 120000,
+    dailyIncome: 15000,
+    totalRevenue: 750000,
+    days: 50,
     highlight: false
   },
   {
     vip: 'VIP5',
-    product: 'VENDRA MOUNTAIN PEAK 01',
-    price: 500000,
-    dailyIncome: 160000,
-    totalRevenue: 28800000,
-    days: 180,
+    product: '32 Inch TV',
+    price: 260000,
+    dailyIncome: 50000,
+    totalRevenue: 1000000,
+    days: 20,
     highlight: true
   },
   {
     vip: 'VIP6',
-    product: 'VENDRA MOUNTAIN PEAK 02',
-    price: 1000000,
-    dailyIncome: 320000,
-    totalRevenue: 57600000,
-    days: 180,
-    highlight: false
-  },
-  {
-    vip: 'VIP7',
-    product: 'VENDRA CITY 01',
-    price: 2500000,
-    dailyIncome: 825000,
-    totalRevenue: 148500000,
-    days: 180,
-    highlight: false
-  },
-  {
-    vip: 'VIP8',
-    product: 'VENDRA CITY 02',
-    price: 5000000,
-    dailyIncome: 2000000,
-    totalRevenue: 360000000,
-    days: 180,
+    product: 'Fridge',
+    price: 450000,
+    dailyIncome: 100000,
+    totalRevenue: 1400000,
+    days: 14,
     highlight: true
   }
 ];

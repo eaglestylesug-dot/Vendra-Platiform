@@ -28,14 +28,33 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({ onClose, onSuccess
   } | null>(null);
 
   const numAmount = parseFloat(amount) || 0;
-  const hasActiveRecharge = summary.has_active_recharge ?? (summary.total_deposits >= 500);
+  
+  // Uganda Time (EAT, UTC+3) Working Hours Calculation: 8:00 AM to 6:00 PM
+  const now = new Date();
+  const eatHours = (now.getUTCHours() + 3) % 24;
+  const eatMinutes = eatHours * 60 + now.getUTCMinutes();
+  const isWithinWorkingHours = eatMinutes >= 480 && eatMinutes <= 1080; // 480 = 8:00 AM, 1080 = 6:00 PM
+
+  const hasConfirmedDeposit = summary.has_confirmed_deposit ?? (summary.total_deposits >= 15000);
+  const hasPurchasedProduct = summary.has_purchased_product ?? ((summary.active_product_count || 0) > 0 || (summary.total_product_purchases || 0) > 0);
+  const isEligibleToWithdraw = hasConfirmedDeposit && hasPurchasedProduct;
   const isBalanceSufficient = summary.available_balance >= numAmount;
 
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!hasActiveRecharge) {
-      setError('Active recharge required: You must have at least one active recharge (min UGX 500) to activate withdrawals.');
+    if (!isWithinWorkingHours) {
+      setError('Withdrawals are available from 8:00 AM to 6:00 PM.');
+      return;
+    }
+
+    if (!hasConfirmedDeposit) {
+      setError('Deposit required: You must have at least one confirmed deposit of at least UGX 15,000 before withdrawing.');
+      return;
+    }
+
+    if (!hasPurchasedProduct) {
+      setError('Product purchase required: You must purchase at least one commercial product before you can withdraw.');
       return;
     }
 
@@ -218,28 +237,70 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({ onClose, onSuccess
               </div>
             </div>
 
-            {/* Active Recharge Policy Card */}
-            {!hasActiveRecharge && (
+            {/* Working Hours Indicator */}
+            {!isWithinWorkingHours && (
+              <div className="p-3.5 mb-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs">
+                <div className="flex items-start gap-2.5">
+                  <Info className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="text-amber-600 dark:text-amber-400 block font-bold">
+                      Outside Working Hours
+                    </strong>
+                    <p className="text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+                      Withdrawals are available from <strong>8:00 AM to 6:00 PM</strong> (Uganda Time). Please submit your request during working hours.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Dual Eligibility Policy Card */}
+            {!isEligibleToWithdraw && (
               <div className="p-3.5 mb-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs">
                 <div className="flex items-start gap-2.5">
                   <Lock className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                  <div>
+                  <div className="w-full">
                     <strong className="text-amber-600 dark:text-amber-400 block font-bold">
-                      Active Deposit Required to Withdraw
+                      Withdrawal Eligibility Requirements
                     </strong>
                     <p className="text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
-                      The <strong>UGX 5,000 Welcome Bonus</strong> and platform yields can only be withdrawn once you have an active deposit (minimum recharge of UGX 500).
+                      To safeguard our platform community, accounts must meet two simple requirements to activate withdrawals:
                     </p>
-                    {onOpenDeposit && (
+
+                    <div className="mt-2.5 space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        {hasConfirmedDeposit ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                        ) : (
+                          <div className="w-3.5 h-3.5 rounded-full border border-amber-400 flex items-center justify-center text-[9px] font-bold text-amber-600">!</div>
+                        )}
+                        <span className={`text-[11px] ${hasConfirmedDeposit ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-slate-600 dark:text-slate-300'}`}>
+                          1. Confirmed deposit of at least UGX 15,000 {hasConfirmedDeposit ? '✓ (Completed)' : '(Required)'}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {hasPurchasedProduct ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                        ) : (
+                          <div className="w-3.5 h-3.5 rounded-full border border-amber-400 flex items-center justify-center text-[9px] font-bold text-amber-600">!</div>
+                        )}
+                        <span className={`text-[11px] ${hasPurchasedProduct ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-slate-600 dark:text-slate-300'}`}>
+                          2. Purchased at least one product {hasPurchasedProduct ? '✓ (Completed)' : '(Required)'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {!hasConfirmedDeposit && onOpenDeposit && (
                       <button
                         type="button"
                         onClick={() => {
                           onClose();
                           onOpenDeposit();
                         }}
-                        className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold text-[11px] shadow-sm hover:brightness-105"
+                        className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold text-[11px] shadow-sm hover:brightness-105"
                       >
-                        Deposit Now (Min UGX 500)
+                        Make a Deposit (Min UGX 15,000)
                       </button>
                     )}
                   </div>
@@ -266,13 +327,15 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({ onClose, onSuccess
 
             <button
               type="submit"
-              disabled={isSubmitting || !isBalanceSufficient || numAmount < 5000 || !hasActiveRecharge}
+              disabled={isSubmitting || !isBalanceSufficient || numAmount < 5000 || !isEligibleToWithdraw || !isWithinWorkingHours}
               className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-red-600 via-orange-600 to-amber-500 hover:brightness-105 active:scale-[0.99] text-white font-bold text-sm shadow-md shadow-orange-500/20 disabled:opacity-50 transition-all"
             >
               {isSubmitting
                 ? 'Reserving Funds in Ledger...'
-                : !hasActiveRecharge
-                ? 'Active Recharge Required to Withdraw'
+                : !isWithinWorkingHours
+                ? 'Withdrawals Open 8:00 AM – 6:00 PM'
+                : !isEligibleToWithdraw
+                ? 'Requirements Not Met'
                 : !isBalanceSufficient
                 ? 'Insufficient Balance'
                 : `Submit Withdrawal • ${formatUGX(numAmount)}`}

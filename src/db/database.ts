@@ -15,8 +15,11 @@ import {
   SupportTicket,
   AuditLog,
   PlatformSettings,
-  UserFinancialSummary
+  UserFinancialSummary,
+  GiftCode,
+  GiftCodeRedemption
 } from '../types/index.ts';
+import { DEFAULT_PRODUCTS } from '../data/defaultProducts.ts';
 
 // In-process persistent storage path with Vercel serverless /tmp support
 const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
@@ -38,171 +41,18 @@ interface DatabaseStore {
   support_tickets: SupportTicket[];
   admin_users: { id: string; user_id: string; role: string; permissions: string[]; created_at: string }[];
   audit_logs: AuditLog[];
+  gift_codes?: GiftCode[];
+  gift_code_redemptions?: GiftCodeRedemption[];
   platform_settings: Record<string, string>;
 }
 
-const DEFAULT_PRODUCTS: Product[] = [
-  {
-    id: 'prod-vendra-mini-01',
-    vip_level: 'VIP1',
-    name: 'VENDRA MINI 01',
-    category: 'VENDRA Mini Series',
-    price: 10000,
-    daily_income: 3000,
-    total_revenue: 540000,
-    duration_days: 180,
-    return_rate: 0.30, // 30% daily
-    return_type: 'daily_percentage',
-    status: 'active',
-    purchase_limit: 10,
-    image_url: 'https://images.unsplash.com/photo-1527977966376-1c8408f9f108?w=800&auto=format&fit=crop&q=80',
-    description: 'Ultra-light compact surveillance and commercial imaging asset fleet. Generates automated daily yield distributed every 24 hours.',
-    eligibility_tier: 'VIP1',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  },
-  {
-    id: 'prod-vendra-mini-02',
-    vip_level: 'VIP2',
-    name: 'VENDRA MINI 02',
-    category: 'VENDRA Mini Series',
-    price: 50000,
-    daily_income: 15000,
-    total_revenue: 2700000,
-    duration_days: 180,
-    return_rate: 0.30, // 30% daily
-    return_type: 'daily_percentage',
-    status: 'active',
-    purchase_limit: 8,
-    image_url: 'https://images.unsplash.com/photo-1508614589041-895b88991e3e?w=800&auto=format&fit=crop&q=80',
-    description: 'Enhanced endurance mini commercial asset with 4K HDR optical sensor deployed for media livestreaming and urban site inspection.',
-    eligibility_tier: 'VIP2',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  },
-  {
-    id: 'prod-vendra-4k-01',
-    vip_level: 'VIP3',
-    name: 'VENDRA 4K 01',
-    category: 'VENDRA 4K Series',
-    price: 120000,
-    daily_income: 37200,
-    total_revenue: 6696000,
-    duration_days: 180,
-    return_rate: 0.31, // 31% daily
-    return_type: 'daily_percentage',
-    status: 'active',
-    purchase_limit: 5,
-    image_url: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&auto=format&fit=crop&q=80',
-    description: 'Professional cinematic quadcopter fleet utilized in broadcasting, commercial real estate surveying, and architectural imaging.',
-    eligibility_tier: 'VIP3',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  },
-  {
-    id: 'prod-vendra-4k-02',
-    vip_level: 'VIP4',
-    name: 'VENDRA 4K 02',
-    category: 'VENDRA 4K Series',
-    price: 250000,
-    daily_income: 77500,
-    total_revenue: 13950000,
-    duration_days: 180,
-    return_rate: 0.31, // 31% daily
-    return_type: 'daily_percentage',
-    status: 'active',
-    purchase_limit: 4,
-    image_url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80',
-    description: 'Dual-sensor thermal & 4K optical industrial fleet for utility infrastructure monitoring, powerline diagnostics, and security.',
-    eligibility_tier: 'VIP4',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  },
-  {
-    id: 'prod-vendra-mountain-01',
-    vip_level: 'VIP5',
-    name: 'VENDRA MOUNTAIN PEAK 01',
-    category: 'VENDRA Enterprise Series',
-    price: 500000,
-    daily_income: 160000,
-    total_revenue: 28800000,
-    duration_days: 180,
-    return_rate: 0.32, // 32% daily
-    return_type: 'daily_percentage',
-    status: 'active',
-    purchase_limit: 3,
-    image_url: 'https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=800&auto=format&fit=crop&q=80',
-    description: 'High-altitude all-weather industrial fleet engineered for mountain topography scanning, search & rescue, and environmental tracking.',
-    eligibility_tier: 'VIP5',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  },
-  {
-    id: 'prod-vendra-mountain-02',
-    vip_level: 'VIP6',
-    name: 'VENDRA MOUNTAIN PEAK 02',
-    category: 'VENDRA Enterprise Series',
-    price: 1000000,
-    daily_income: 320000,
-    total_revenue: 57600000,
-    duration_days: 180,
-    return_rate: 0.32, // 32% daily
-    return_type: 'daily_percentage',
-    status: 'active',
-    purchase_limit: 2,
-    image_url: 'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=800&auto=format&fit=crop&q=80',
-    description: 'Enterprise hybrid commercial fleet equipped with LiDAR spatial scanning for mineral geological exploration and cellular tower audits.',
-    eligibility_tier: 'VIP6',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  },
-  {
-    id: 'prod-vendra-city-01',
-    vip_level: 'VIP7',
-    name: 'VENDRA CITY 01',
-    category: 'VENDRA Commercial Fleet',
-    price: 2500000,
-    daily_income: 825000,
-    total_revenue: 148500000,
-    duration_days: 180,
-    return_rate: 0.33, // 33% daily
-    return_type: 'daily_percentage',
-    status: 'active',
-    purchase_limit: 2,
-    image_url: 'https://images.unsplash.com/photo-1577705998148-6da4f3963bc8?w=800&auto=format&fit=crop&q=80',
-    description: 'Autonomous metropolitan delivery fleet corridor network executing scheduled courier contracts and commercial cargo transits.',
-    eligibility_tier: 'VIP7',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  },
-  {
-    id: 'prod-vendra-city-02',
-    vip_level: 'VIP8',
-    name: 'VENDRA CITY 02',
-    category: 'VENDRA Commercial Fleet',
-    price: 5000000,
-    daily_income: 2000000,
-    total_revenue: 360000000,
-    duration_days: 180,
-    return_rate: 0.40, // 40% daily
-    return_type: 'daily_percentage',
-    status: 'active',
-    purchase_limit: 1,
-    image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&auto=format&fit=crop&q=80',
-    description: 'Flagship heavy-lift autonomous commercial fleet operating industrial maritime port surveillance and regional logistics routes.',
-    eligibility_tier: 'VIP8',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  }
-];
-
 const DEFAULT_SETTINGS: Record<string, string> = {
-  min_deposit_ugx: '500',
+  min_deposit_ugx: '15000',
   min_withdrawal_ugx: '5000',
   max_withdrawal_ugx: '5000000',
   l1_referral_percentage: '35.0',
   l2_referral_percentage: '6.0',
-  referral_eligibility_min_deposit: '500',
+  referral_eligibility_min_deposit: '15000',
   welcome_bonus_ugx: '5000',
   maintenance_mode: 'false',
   momo_gateway_mode: 'live',
@@ -226,6 +76,8 @@ class RelationalDatabase {
     support_tickets: [],
     admin_users: [],
     audit_logs: [],
+    gift_codes: [],
+    gift_code_redemptions: [],
     platform_settings: { ...DEFAULT_SETTINGS }
   };
 
@@ -269,12 +121,19 @@ class RelationalDatabase {
       }
 
       // Ensure platform settings reflect latest policy
-      this.store.platform_settings.min_deposit_ugx = '500';
+      this.store.platform_settings.min_deposit_ugx = '15000';
       this.store.platform_settings.min_withdrawal_ugx = '5000';
       this.store.platform_settings.l1_referral_percentage = '35.0';
       this.store.platform_settings.l2_referral_percentage = '6.0';
-      this.store.platform_settings.referral_eligibility_min_deposit = '500';
+      this.store.platform_settings.referral_eligibility_min_deposit = '15000';
       this.store.platform_settings.momo_gateway_mode = 'live';
+
+      if (!this.store.gift_codes) {
+        this.store.gift_codes = [];
+      }
+      if (!this.store.gift_code_redemptions) {
+        this.store.gift_code_redemptions = [];
+      }
 
       // Ensure authorized VendraAdmin super admin exists with exact requested credentials
       const vendraAdmin = this.store.users.find(
@@ -290,20 +149,25 @@ class RelationalDatabase {
         vendraAdmin.password_hash = bcrypt.hashSync('@Es%', bcrypt.genSaltSync(10));
       }
 
-      // Ensure products are migrated to official VENDRA commercial investment plans
-      const hasVendraProducts = this.store.products.some(p => p.id.startsWith('prod-vendra-'));
-      if (this.store.products.length === 0 || !hasVendraProducts || this.store.products.some(p => !p.name.startsWith('VENDRA'))) {
+      // Ensure products are migrated to the 6 official VENDRA investment plans
+      const hasNewProducts = this.store.products.some(p => p.id === 'prod-bread-milk');
+      if (this.store.products.length === 0 || !hasNewProducts || this.store.products.some(p => p.id.startsWith('prod-vendra-'))) {
         this.store.products = [...DEFAULT_PRODUCTS];
         this.persist();
       } else {
-        // Backfill image_url if missing on any product
+        // Sync or backfill image_url if updated on DEFAULT_PRODUCTS
+        let updatedImages = false;
         for (const p of this.store.products) {
-          if (!p.image_url) {
-            const match = DEFAULT_PRODUCTS.find(dp => dp.id === p.id || dp.vip_level === p.vip_level);
-            if (match?.image_url) {
+          const match = DEFAULT_PRODUCTS.find(dp => dp.id === p.id || dp.vip_level === p.vip_level);
+          if (match?.image_url) {
+            if (!p.image_url || (p.id === 'prod-bread-milk' && p.image_url !== match.image_url)) {
               p.image_url = match.image_url;
+              updatedImages = true;
             }
           }
+        }
+        if (updatedImages) {
+          this.persist();
         }
       }
 
@@ -478,6 +342,7 @@ class RelationalDatabase {
           tx.transaction_type === 'PRODUCT_REWARD' ||
           tx.transaction_type === 'REFERRAL_REWARD' ||
           tx.transaction_type === 'ADJUSTMENT_CREDIT' ||
+          tx.transaction_type === 'GIFT_CODE_CREDIT' ||
           tx.transaction_type === 'WITHDRAWAL_REFUND'
         ) {
           credits += tx.amount;
@@ -486,6 +351,7 @@ class RelationalDatabase {
         if (
           tx.transaction_type === 'PRODUCT_PURCHASE' ||
           tx.transaction_type === 'WITHDRAWAL_COMPLETED' ||
+          tx.transaction_type === 'WITHDRAWAL_FEE' ||
           tx.transaction_type === 'ADJUSTMENT_DEBIT'
         ) {
           debits += tx.amount;
@@ -516,9 +382,36 @@ class RelationalDatabase {
     }
 
     const available_balance = Math.max(0, credits - debits);
-    const minDepositReq = parseFloat(this.store.platform_settings.min_deposit_ugx || '500');
-    const has_active_recharge = totalDeposits >= minDepositReq;
-    const can_withdraw = has_active_recharge;
+    const minDepositReq = parseFloat(this.store.platform_settings.min_deposit_ugx || '15000');
+
+    // Rule 3 & 5: Check confirmed deposit and product purchase
+    const confirmedDeposits = this.store.deposits.filter(d => d.user_id === userId && d.status === 'CONFIRMED');
+    const has_confirmed_deposit = confirmedDeposits.length > 0 && totalDeposits >= minDepositReq;
+    const has_active_recharge = has_confirmed_deposit;
+
+    const userPurchases = this.store.product_purchases.filter(p => p.user_id === userId);
+    const has_purchased_product = userPurchases.length > 0;
+    const totalProductPurchases = userPurchases.reduce((acc, p) => acc + (p.amount_paid || 0), 0);
+
+    // Rule 6: Withdrawal hours 8:00 AM – 6:00 PM (Uganda Time UTC+3)
+    const now = new Date();
+    const eatMinutes = ((now.getUTCHours() + 3) % 24) * 60 + now.getUTCMinutes();
+    const is_within_withdrawal_hours = eatMinutes >= 480 && eatMinutes <= 1080;
+
+    // Rule 5: User must meet BOTH requirements (confirmed deposit AND product purchase)
+    const can_withdraw = has_confirmed_deposit && has_purchased_product;
+
+    let withdrawal_ineligibility_reason: string | undefined;
+    if (!has_confirmed_deposit && !has_purchased_product) {
+      withdrawal_ineligibility_reason = 'Withdrawals require at least one confirmed deposit (min UGX 15,000) and at least one product purchase.';
+    } else if (!has_confirmed_deposit) {
+      withdrawal_ineligibility_reason = 'Withdrawals require at least one confirmed deposit of at least UGX 15,000.';
+    } else if (!has_purchased_product) {
+      withdrawal_ineligibility_reason = 'Withdrawals require purchasing at least one product before withdrawal.';
+    } else if (!is_within_withdrawal_hours) {
+      withdrawal_ineligibility_reason = 'Withdrawals are available from 8:00 AM to 6:00 PM.';
+    }
+
     const welcome_bonus_claimed = userTx.some(t => t.reference.includes('BONUS-WELCOME'));
 
     const todayDateStr = new Date().toISOString().slice(0, 10);
@@ -550,7 +443,12 @@ class RelationalDatabase {
       active_product_count: activePurchases.length,
       daily_expected_yield: dailyExpectedYield,
       has_active_recharge,
+      has_confirmed_deposit,
+      has_purchased_product,
+      total_product_purchases: totalProductPurchases,
       can_withdraw,
+      withdrawal_ineligibility_reason,
+      is_within_withdrawal_hours,
       welcome_bonus_claimed,
       daily_checkin_claimed_today,
       daily_checkin_streak
@@ -823,20 +721,20 @@ class RelationalDatabase {
       throw new Error(`You have reached the maximum active purchase limit (${product.purchase_limit}) for this product.`);
     }
 
-    // Ledger verification: check active deposit & available balance
+    // Ledger verification: check confirmed deposit & available balance
     const summary = this.calculateUserFinancialSummary(userId);
-    const minDeposit = parseFloat(this.store.platform_settings.min_deposit_ugx || '500');
+    const minDeposit = parseFloat(this.store.platform_settings.min_deposit_ugx || '15000');
 
-    // Strict Rule: No one can use the welcome bonus to buy products without an active deposit!
-    if (!summary.has_active_recharge || summary.total_deposits < minDeposit) {
+    // Rule 3: A user must have a successful confirmed deposit before purchasing a product
+    if (!summary.has_confirmed_deposit || summary.total_deposits < minDeposit) {
       throw new Error(
-        `Active deposit required: You must make an active deposit of at least UGX ${minDeposit.toLocaleString()} before purchasing products. The UGX 5,000 welcome bonus cannot be used to buy products without an active deposit.`
+        `Confirmed deposit required: You must have at least one successful confirmed deposit of at least UGX ${minDeposit.toLocaleString()} before purchasing a product.`
       );
     }
 
     if (summary.available_balance < product.price) {
       throw new Error(
-        `Insufficient available balance. Required: UGX ${product.price.toLocaleString()}, Available: UGX ${summary.available_balance.toLocaleString()}. Please recharge first.`
+        `Insufficient available balance. Required: UGX ${product.price.toLocaleString()}, Available: UGX ${summary.available_balance.toLocaleString()}. Please make a deposit first.`
       );
     }
 
@@ -1353,9 +1251,9 @@ class RelationalDatabase {
     pesapalOrderTrackingId?: string,
     pesapalRedirectUrl?: string
   ): Deposit {
-    const minDeposit = parseFloat(this.store.platform_settings.min_deposit_ugx || '500');
+    const minDeposit = parseFloat(this.store.platform_settings.min_deposit_ugx || '15000');
     if (amount < minDeposit) {
-      throw new Error(`Minimum recharge is UGX ${minDeposit.toLocaleString()}`);
+      throw new Error(`Minimum deposit amount is UGX ${minDeposit.toLocaleString()}. Users cannot deposit less than UGX 15,000.`);
     }
 
     const ref = `DEP-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
@@ -1546,6 +1444,28 @@ class RelationalDatabase {
     provider: Withdrawal['provider'],
     phoneNumber: string
   ): Withdrawal {
+    // 1. Verify user exists
+    const user = this.getUserById(userId);
+    if (!user) {
+      throw new Error('User account not found.');
+    }
+
+    // 2. Working hours check: 8:00 AM - 6:00 PM (Uganda Time UTC+3)
+    const now = new Date();
+    const eatMinutes = ((now.getUTCHours() + 3) % 24) * 60 + now.getUTCMinutes();
+    if (eatMinutes < 480 || eatMinutes > 1080) {
+      throw new Error('Withdrawals are available from 8:00 AM to 6:00 PM.');
+    }
+
+    // 3. Prevent duplicate or concurrent pending withdrawal requests
+    const hasPendingWithdrawal = this.store.withdrawals.some(
+      w => w.user_id === userId && w.status === 'PENDING'
+    );
+    if (hasPendingWithdrawal) {
+      throw new Error('You already have a pending withdrawal request in process. Please wait for it to be reviewed.');
+    }
+
+    // 4. Amount limits
     const minWithdrawal = parseFloat(this.store.platform_settings.min_withdrawal_ugx || '5000');
     if (amount < minWithdrawal) {
       throw new Error(`Minimum withdrawal is UGX ${minWithdrawal.toLocaleString()}`);
@@ -1556,17 +1476,23 @@ class RelationalDatabase {
       throw new Error(`Maximum withdrawal limit is UGX ${maxWithdrawal.toLocaleString()} per transaction.`);
     }
 
-    // Active Recharge Requirement Rule:
-    // 5k welcome bonus and earnings are withdrawable after active deposit
+    // 5. Dual Eligibility Check: Confirmed Deposit AND Product Purchase
     const summary = this.calculateUserFinancialSummary(userId);
-    if (!summary.has_active_recharge) {
-      const minDep = parseFloat(this.store.platform_settings.min_deposit_ugx || '500');
+    const minDep = parseFloat(this.store.platform_settings.min_deposit_ugx || '15000');
+
+    if (!summary.has_confirmed_deposit || summary.total_deposits < minDep) {
       throw new Error(
-        `Active recharge required: You must make at least one recharge (minimum UGX ${minDep.toLocaleString()}) to activate withdrawals. Your UGX 5,000 welcome bonus and rewards are unlocked immediately once your first recharge is confirmed.`
+        `Withdrawal unavailable: You must have at least one confirmed deposit of at least UGX ${minDep.toLocaleString()} before withdrawing.`
       );
     }
 
-    // Atomic Balance Check
+    if (!summary.has_purchased_product) {
+      throw new Error(
+        'Withdrawal unavailable: You must purchase at least one product before you can request a withdrawal.'
+      );
+    }
+
+    // 6. Sufficient available balance verification
     if (summary.available_balance < amount) {
       throw new Error(
         `Insufficient available funds. You requested UGX ${amount.toLocaleString()}, but your available balance is UGX ${summary.available_balance.toLocaleString()}.`
@@ -2187,6 +2113,212 @@ class RelationalDatabase {
 
     this.addAuditLog(adminId, 'admin', `BALANCE_${type.toUpperCase()}`, 'users', userId, `Adjusted balance by UGX ${amount} (${type}). Reason: ${reason}`);
     this.persist();
+  }
+
+  // GIFT CODES MANAGEMENT (ADMIN GENERATION & USER REDEMPTION)
+  public generateGiftCode(
+    adminId: string,
+    params: {
+      code?: string;
+      value: number;
+      max_uses?: number;
+      expires_at?: string | null;
+      notes?: string;
+    }
+  ): GiftCode {
+    if (!this.store.gift_codes) this.store.gift_codes = [];
+
+    const value = Math.round(Number(params.value));
+    if (isNaN(value) || value <= 0) {
+      throw new Error('Gift code value must be a valid positive amount in UGX.');
+    }
+
+    const code = (
+      params.code && params.code.trim().length > 0
+        ? params.code.trim().toUpperCase()
+        : `VEN-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
+    );
+
+    const exists = this.store.gift_codes.some(c => c.code.toUpperCase() === code);
+    if (exists) {
+      throw new Error(`A gift code with the code "${code}" already exists.`);
+    }
+
+    const maxUses = params.max_uses && params.max_uses > 0 ? Math.floor(params.max_uses) : 1;
+
+    const giftCode: GiftCode = {
+      id: `gift-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      code,
+      value,
+      max_uses: maxUses,
+      times_used: 0,
+      status: 'active',
+      expires_at: params.expires_at || null,
+      notes: params.notes || null,
+      created_at: new Date().toISOString(),
+      created_by: adminId
+    };
+
+    this.store.gift_codes.push(giftCode);
+    this.addAuditLog(adminId, 'admin', 'GIFT_CODE_GENERATED', 'gift_codes', giftCode.id, `Created gift code ${code} worth UGX ${value.toLocaleString()}`);
+    this.persist();
+    return giftCode;
+  }
+
+  public getGiftCodes(): GiftCode[] {
+    if (!this.store.gift_codes) this.store.gift_codes = [];
+    return [...this.store.gift_codes].reverse();
+  }
+
+  public getGiftCodeRedemptions(codeId?: string): GiftCodeRedemption[] {
+    if (!this.store.gift_code_redemptions) this.store.gift_code_redemptions = [];
+    if (codeId) {
+      return this.store.gift_code_redemptions.filter(r => r.gift_code_id === codeId).reverse();
+    }
+    return [...this.store.gift_code_redemptions].reverse();
+  }
+
+  public toggleGiftCodeStatus(codeId: string, adminId: string, status: 'active' | 'deactivated'): GiftCode {
+    if (!this.store.gift_codes) this.store.gift_codes = [];
+    const giftCode = this.store.gift_codes.find(c => c.id === codeId);
+    if (!giftCode) throw new Error('Gift code not found.');
+
+    giftCode.status = status;
+    this.addAuditLog(adminId, 'admin', 'GIFT_CODE_STATUS_UPDATED', 'gift_codes', giftCode.id, `Status updated to ${status}`);
+    this.persist();
+    return giftCode;
+  }
+
+  public deleteGiftCode(codeId: string, adminId: string): boolean {
+    if (!this.store.gift_codes) this.store.gift_codes = [];
+    const index = this.store.gift_codes.findIndex(c => c.id === codeId);
+    if (index === -1) throw new Error('Gift code not found.');
+
+    const removed = this.store.gift_codes.splice(index, 1)[0];
+    this.addAuditLog(adminId, 'admin', 'GIFT_CODE_DELETED', 'gift_codes', codeId, `Deleted gift code ${removed.code}`);
+    this.persist();
+    return true;
+  }
+
+  public redeemGiftCode(
+    userId: string,
+    rawCode: string
+  ): {
+    success: boolean;
+    amount: number;
+    message: string;
+    summary: UserFinancialSummary;
+  } {
+    if (!this.store.gift_codes) this.store.gift_codes = [];
+    if (!this.store.gift_code_redemptions) this.store.gift_code_redemptions = [];
+
+    const user = this.getUserById(userId);
+    if (!user) throw new Error('User not found.');
+
+    const cleanCode = (rawCode || '').trim().toUpperCase();
+    if (!cleanCode) {
+      throw new Error('Please enter a valid gift code.');
+    }
+
+    const giftCode = this.store.gift_codes.find(c => c.code.toUpperCase() === cleanCode);
+    if (!giftCode) {
+      throw new Error('Invalid gift code. Please check the code and try again.');
+    }
+
+    if (giftCode.status === 'deactivated') {
+      throw new Error('This gift code has been deactivated by administration.');
+    }
+
+    if (giftCode.status === 'expired') {
+      throw new Error('This gift code has expired.');
+    }
+
+    // Expiry date verification
+    if (giftCode.expires_at) {
+      const expDate = new Date(giftCode.expires_at).getTime();
+      if (Date.now() > expDate) {
+        giftCode.status = 'expired';
+        this.persist();
+        throw new Error('This gift code expired on ' + new Date(giftCode.expires_at).toLocaleDateString() + '.');
+      }
+    }
+
+    // Usage limit verification
+    if (giftCode.times_used >= giftCode.max_uses) {
+      giftCode.status = 'expired';
+      this.persist();
+      throw new Error('This gift code has reached its maximum usage limit.');
+    }
+
+    // Prevent duplicate redemption by the same user
+    const alreadyRedeemed = this.store.gift_code_redemptions.some(
+      r => r.gift_code_id === giftCode.id && r.user_id === userId
+    );
+    if (alreadyRedeemed) {
+      throw new Error('You have already redeemed this gift code.');
+    }
+
+    // Increment usage
+    giftCode.times_used += 1;
+    if (giftCode.times_used >= giftCode.max_uses) {
+      giftCode.status = 'expired';
+    }
+
+    const profile = this.getProfileByUserId(userId);
+    const redemption: GiftCodeRedemption = {
+      id: `red-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+      gift_code_id: giftCode.id,
+      code: giftCode.code,
+      user_id: userId,
+      user_phone: user.phone,
+      user_name: profile?.full_name || user.phone,
+      amount: giftCode.value,
+      redeemed_at: new Date().toISOString()
+    };
+    this.store.gift_code_redemptions.push(redemption);
+
+    // Record ledger entry
+    const txRef = `GIFT-${giftCode.code}-${userId.slice(-6)}-${Date.now()}`;
+    this.recordTransaction(
+      userId,
+      giftCode.value,
+      'GIFT_CODE_CREDIT',
+      txRef,
+      'SUCCESSFUL',
+      'ADMIN_GIFT_CODE',
+      `Gift Code Redemption: ${giftCode.code}`,
+      JSON.stringify({
+        giftCodeId: giftCode.id,
+        code: giftCode.code,
+        value: giftCode.value,
+        redeemedAt: redemption.redeemed_at
+      })
+    );
+
+    this.addNotification(
+      userId,
+      'Gift Code Redeemed!',
+      `Congratulations! You have successfully redeemed gift code ${giftCode.code}. UGX ${giftCode.value.toLocaleString()} has been credited to your available balance.`,
+      'reward'
+    );
+
+    this.addAuditLog(
+      userId,
+      'user',
+      'GIFT_CODE_REDEEMED',
+      'gift_codes',
+      giftCode.id,
+      `Redeemed gift code ${giftCode.code} for UGX ${giftCode.value}`
+    );
+
+    this.persist();
+
+    return {
+      success: true,
+      amount: giftCode.value,
+      message: `Gift code ${giftCode.code} successfully redeemed! UGX ${giftCode.value.toLocaleString()} has been credited to your balance.`,
+      summary: this.calculateUserFinancialSummary(userId)
+    };
   }
 
   // PLATFORM SETTINGS

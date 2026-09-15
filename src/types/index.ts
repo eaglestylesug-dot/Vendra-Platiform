@@ -6,9 +6,11 @@ export type TransactionType =
   | 'WITHDRAWAL_RESERVE'
   | 'WITHDRAWAL_COMPLETED'
   | 'WITHDRAWAL_REFUND'
+  | 'WITHDRAWAL_FEE'
   | 'PRODUCT_PURCHASE'
   | 'PRODUCT_REWARD'
   | 'REFERRAL_REWARD'
+  | 'GIFT_CODE_CREDIT'
   | 'ADJUSTMENT_CREDIT'
   | 'ADJUSTMENT_DEBIT';
 
@@ -214,18 +216,47 @@ export interface PlatformSettings {
   momo_gateway_mode: 'sandbox' | 'live';
 }
 
+export interface GiftCode {
+  id: string;
+  code: string;
+  value: number; // in UGX
+  max_uses: number;
+  times_used: number;
+  status: 'active' | 'deactivated' | 'expired';
+  expires_at?: string | null;
+  notes?: string | null;
+  created_at: string;
+  created_by: string;
+}
+
+export interface GiftCodeRedemption {
+  id: string;
+  gift_code_id: string;
+  code: string;
+  user_id: string;
+  user_phone?: string;
+  user_name?: string;
+  amount: number;
+  redeemed_at: string;
+}
+
 export interface UserFinancialSummary {
   available_balance: number;
   total_earnings: number;
   total_deposits: number;
   total_withdrawals: number;
   pending_withdrawals: number;
+  total_product_purchases?: number;
   product_operating_profits?: number;
   referral_commissions?: number;
   active_product_count?: number;
   daily_expected_yield?: number;
   has_active_recharge?: boolean;
+  has_confirmed_deposit?: boolean;
+  has_purchased_product?: boolean;
   can_withdraw?: boolean;
+  withdrawal_ineligibility_reason?: string;
+  is_within_withdrawal_hours?: boolean;
   welcome_bonus_claimed?: boolean;
   daily_checkin_claimed_today?: boolean;
   daily_checkin_streak?: number;

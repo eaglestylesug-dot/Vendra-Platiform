@@ -351,6 +351,20 @@ router.post('/user/daily-checkin', requireAuth, (req: AuthenticatedRequest, res:
   }
 });
 
+router.post(['/user/redeem-gift-code', '/gift-codes/redeem'], requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const user = req.user!;
+    const { code } = req.body;
+    if (!code || typeof code !== 'string') {
+      return res.status(400).json({ error: 'Please enter a valid gift code.' });
+    }
+    const result = db.redeemGiftCode(user.id, code);
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message || 'Gift code redemption failed.' });
+  }
+});
+
 // ==========================================
 // 2. PRODUCTS & PURCHASES
 // ==========================================
@@ -640,10 +654,10 @@ router.post('/deposits', requireAuth, async (req: AuthenticatedRequest, res: Res
     const user = req.user!;
     const { amount, phone_number, email, full_name } = req.body;
 
-    const minDeposit = parseFloat(db.getSettings().min_deposit_ugx || '500');
+    const minDeposit = parseFloat(db.getSettings().min_deposit_ugx || '15000');
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount < minDeposit) {
-      return res.status(400).json({ error: `Minimum deposit is UGX ${minDeposit.toLocaleString()}.` });
+      return res.status(400).json({ error: `Minimum deposit amount is UGX ${minDeposit.toLocaleString()}. Users cannot deposit less than UGX 15,000.` });
     }
 
     const cleanPhone = standardizeUgandaPhone(phone_number || user.phone);
@@ -696,10 +710,10 @@ router.post('/pesapal/initiate', requireAuth, async (req: AuthenticatedRequest, 
     const user = req.user!;
     const { amount, phone_number, email, full_name } = req.body;
 
-    const minDeposit = parseFloat(db.getSettings().min_deposit_ugx || '500');
+    const minDeposit = parseFloat(db.getSettings().min_deposit_ugx || '15000');
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount < minDeposit) {
-      return res.status(400).json({ error: `Minimum deposit is UGX ${minDeposit.toLocaleString()}.` });
+      return res.status(400).json({ error: `Minimum deposit amount is UGX ${minDeposit.toLocaleString()}. Users cannot deposit less than UGX 15,000.` });
     }
 
     const cleanPhone = standardizeUgandaPhone(phone_number || user.phone);
@@ -1468,6 +1482,54 @@ router.post('/admin/tickets/:id/reply', requireAdmin, (req: AuthenticatedRequest
 router.get('/admin/audit-logs', requireAdmin, (_req: AuthenticatedRequest, res: Response) => {
   const logs = db.getAuditLogs();
   return res.json(logs);
+});
+
+// Admin Gift Codes Management
+router.get('/admin/gift-codes', requireAdmin, (_req: AuthenticatedRequest, res: Response) => {
+  return res.json(db.getGiftCodes());
+});
+
+router.post('/admin/gift-codes', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const admin = req.user!;
+    const { code, value, max_uses, expires_at, notes } = req.body;
+    const giftCode = db.generateGiftCode(admin.id, {
+      code,
+      value: parseFloat(value),
+      max_uses: max_uses ? parseInt(max_uses, 10) : 1,
+      expires_at: expires_at || null,
+      notes: notes || null
+    });
+    return res.status(201).json(giftCode);
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message || 'Failed to create gift code.' });
+  }
+});
+
+router.post('/admin/gift-codes/:id/toggle-status', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const admin = req.user!;
+    const { status } = req.body;
+    const updated = db.toggleGiftCodeStatus(req.params.id, admin.id, status);
+    return res.json(updated);
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message || 'Failed to update gift code status.' });
+  }
+});
+
+router.delete('/admin/gift-codes/:id', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const admin = req.user!;
+    db.deleteGiftCode(req.params.id, admin.id);
+    return res.json({ success: true, message: 'Gift code deleted.' });
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message || 'Failed to delete gift code.' });
+  }
+});
+
+router.get('/admin/gift-codes/redemptions', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  const codeId = req.query.codeId as string | undefined;
+  return res.json(db.getGiftCodeRedemptions(codeId));
 });
 
 // ==========================================

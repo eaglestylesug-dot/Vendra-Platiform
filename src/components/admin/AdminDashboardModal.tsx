@@ -35,6 +35,7 @@ import { useAuth } from '../../context/AuthContext.tsx';
 import { formatUGX, formatDate } from '../../utils/currency.ts';
 import { AdminAnalyticsTab } from './AdminAnalyticsTab.tsx';
 import { AdminLoginPage } from './AdminLoginPage.tsx';
+import { AdminGiftCodesTab } from './AdminGiftCodesTab.tsx';
 
 interface AdminDashboardModalProps {
   onClose: () => void;
@@ -51,7 +52,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
 
   // Dashboard Active Tab
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'analytics' | 'withdrawals' | 'deposits' | 'products' | 'users' | 'settings' | 'tickets' | 'audit'
+    'overview' | 'analytics' | 'withdrawals' | 'deposits' | 'products' | 'users' | 'gift_codes' | 'settings' | 'tickets' | 'audit'
   >('overview');
 
   // Loaded Data
@@ -545,6 +546,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
             },
             { key: 'products', label: `Products (${products.length})`, icon: Layers },
             { key: 'users', label: `Users (${usersList.length})`, icon: Users },
+            { key: 'gift_codes', label: 'Gift Codes', icon: Key },
             { key: 'settings', label: 'Settings', icon: Settings },
             { key: 'tickets', label: 'Tickets', icon: Ticket },
             { key: 'audit', label: 'Audit Trail', icon: FileText }
@@ -1126,6 +1128,11 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                 ))}
               </div>
             </div>
+          )}
+
+          {/* TAB: GIFT CODES */}
+          {activeTab === 'gift_codes' && (
+            <AdminGiftCodesTab token={token} onRefreshRequired={fetchAdminData} />
           )}
 
           {/* TAB 6: PLATFORM SETTINGS */}

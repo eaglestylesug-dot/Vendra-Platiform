@@ -20,9 +20,10 @@ import { AuthModal } from './components/auth/AuthModal.tsx';
 import { LoginPage } from './components/auth/LoginPage.tsx';
 import { VendraPlanTableModal } from './components/products/VendraPlanTableModal.tsx';
 import { NotificationModal } from './components/notifications/NotificationModal.tsx';
+import { GiftCodeModal } from './components/gift/GiftCodeModal.tsx';
 import { Product } from './types/index.ts';
 import { DEFAULT_PRODUCTS } from './data/defaultProducts.ts';
-import { AlertTriangle, Clock, RefreshCw, ShieldCheck, Sparkles, TrendingUp, Layers, Zap, Table } from 'lucide-react';
+import { AlertTriangle, Clock, RefreshCw, ShieldCheck, Sparkles, TrendingUp, Layers, Zap, Table, Gift } from 'lucide-react';
 import { formatUGX } from './utils/currency.ts';
 
 function MainApp() {
@@ -45,6 +46,7 @@ function MainApp() {
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
+  const [showGiftCodeModal, setShowGiftCodeModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [pesapalBanner, setPesapalBanner] = useState<{
     type: 'success' | 'pending' | 'error';
@@ -364,6 +366,38 @@ function MainApp() {
                   }}
                 />
 
+                {/* Gift Code Voucher Redemption */}
+                <div
+                  onClick={() => {
+                    if (!user) setShowAuthModal(true);
+                    else setShowGiftCodeModal(true);
+                  }}
+                  className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-red-500/10 border border-amber-500/20 flex items-center justify-between cursor-pointer hover:border-amber-500/40 transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                      <Gift className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <span>Redeem Gift Code</span>
+                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 uppercase">
+                          Bonus
+                        </span>
+                      </h4>
+                      <p className="text-[11px] text-slate-400">
+                        Have a promotional voucher code? Claim instant balance
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="px-3 py-1.5 rounded-xl bg-amber-500 text-slate-950 font-black text-xs shadow-xs"
+                  >
+                    Redeem
+                  </button>
+                </div>
+
                 {/* Yield Notice Toast */}
                 {yieldNotice && (
                   <div
@@ -633,6 +667,7 @@ function MainApp() {
                   onOpenAdmin={() => setShowAdminModal(true)}
                   onOpenRecharge={() => setShowDepositModal(true)}
                   onOpenWithdraw={() => setShowWithdrawModal(true)}
+                  onOpenGiftCode={() => setShowGiftCodeModal(true)}
                 />
               ) : (
                 <div className="p-6 text-center py-24 space-y-4">
@@ -719,6 +754,11 @@ function MainApp() {
       {/* History Modal */}
       {showHistoryModal && (
         <HistoryModal onClose={() => setShowHistoryModal(false)} />
+      )}
+
+      {/* Gift Code Redemption Modal */}
+      {showGiftCodeModal && (
+        <GiftCodeModal onClose={() => setShowGiftCodeModal(false)} />
       )}
 
       {/* Customer Support Modal */}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   ChevronRight,
+  Gift,
   Headset,
   HelpCircle,
   History,
@@ -23,6 +24,7 @@ interface MinePageProps {
   onOpenAdmin: () => void;
   onOpenRecharge: () => void;
   onOpenWithdraw: () => void;
+  onOpenGiftCode?: () => void;
 }
 
 export const MinePage: React.FC<MinePageProps> = ({
@@ -30,7 +32,8 @@ export const MinePage: React.FC<MinePageProps> = ({
   onOpenSupport,
   onOpenAdmin,
   onOpenRecharge,
-  onOpenWithdraw
+  onOpenWithdraw,
+  onOpenGiftCode
 }) => {
   const { user, profile, summary, isAdmin, logout, token, refreshUserData } = useAuth();
 
@@ -234,6 +237,29 @@ export const MinePage: React.FC<MinePageProps> = ({
           </div>
           <ChevronRight className="w-4 h-4 text-slate-400" />
         </button>
+
+        {/* Redeem Gift Code */}
+        {onOpenGiftCode && (
+          <button
+            onClick={onOpenGiftCode}
+            className="w-full p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all text-left"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                <Gift className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block">
+                  Redeem Gift Code
+                </span>
+                <span className="text-[11px] text-slate-400 block">
+                  Claim voucher codes and promotional bonuses
+                </span>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-slate-400" />
+          </button>
+        )}
 
         {/* Change Password */}
         <button
