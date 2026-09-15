@@ -410,44 +410,67 @@ function MainApp() {
                         const img = matchedProduct?.image_url || pur.image_url;
                         const dailyProfit = matchedProduct?.daily_income || pur.daily_income || Math.round(pur.amount_paid * pur.return_rate);
 
+                        const isDue = (pur as any).is_profit_due;
+                        const countdownText = (pur as any).countdown_text || 'Profit pending — 24h cycle';
+                        const cycles = (pur as any).cycles_completed || 0;
+
                         return (
                           <div
                             key={pur.id}
-                            className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-xs flex items-center justify-between gap-3"
+                            className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-xs space-y-2.5"
                           >
-                            <div className="flex items-center gap-3 min-w-0">
-                              {img ? (
-                                <img
-                                  src={img}
-                                  alt={pur.product_name}
-                                  className="w-11 h-11 rounded-xl object-cover border border-slate-200 dark:border-slate-700 flex-shrink-0"
-                                  referrerPolicy="no-referrer"
-                                />
-                              ) : (
-                                <div className="w-11 h-11 rounded-xl bg-orange-600/10 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 flex items-center justify-center font-black text-xs flex-shrink-0">
-                                  VIP
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-3 min-w-0">
+                                {img ? (
+                                  <img
+                                    src={img}
+                                    alt={pur.product_name}
+                                    className="w-11 h-11 rounded-xl object-cover border border-slate-200 dark:border-slate-700 flex-shrink-0"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                ) : (
+                                  <div className="w-11 h-11 rounded-xl bg-orange-600/10 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 flex items-center justify-center font-black text-xs flex-shrink-0">
+                                    VIP
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <span className="font-bold text-slate-900 dark:text-white block truncate">
+                                    {pur.product_name}
+                                  </span>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded">
+                                      +{formatUGX(dailyProfit)}/day
+                                    </span>
+                                    <span className="text-[10px] text-slate-400">
+                                      Cycle #{cycles + 1}
+                                    </span>
+                                  </div>
                                 </div>
-                              )}
-                              <div className="min-w-0">
-                                <span className="font-bold text-slate-900 dark:text-white block truncate">
-                                  {pur.product_name}
+                              </div>
+
+                              <div className="text-right flex-shrink-0">
+                                <span className="font-black text-emerald-600 dark:text-emerald-400 block text-xs">
+                                  +{formatUGX(pur.total_accrued_reward || 0)}
                                 </span>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.2 rounded">
-                                    +{formatUGX(dailyProfit)}/day
-                                  </span>
-                                  <span className="text-[10px] text-slate-400">
-                                    {pur.duration_days ? `${pur.duration_days}d plan` : '180d plan'}
-                                  </span>
-                                </div>
+                                <span className="text-[9px] text-slate-400 uppercase font-bold">Total Accrued</span>
                               </div>
                             </div>
 
-                            <div className="text-right flex-shrink-0">
-                              <span className="font-black text-emerald-600 dark:text-emerald-400 block text-xs">
-                                +{formatUGX(pur.total_accrued_reward || 0)}
+                            {/* 24-Hour Cycle Status Bar */}
+                            <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-700/60 text-[10px]">
+                              <span className="text-slate-400 font-mono">
+                                Activated: {new Date((pur as any).activated_at || pur.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </span>
-                              <span className="text-[9px] text-slate-400 uppercase font-bold">Total Accrued</span>
+                              <span
+                                className={`font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ${
+                                  isDue
+                                    ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                                    : 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30'
+                                }`}
+                              >
+                                <Clock className="w-3 h-3" />
+                                <span>{countdownText}</span>
+                              </span>
                             </div>
                           </div>
                         );
@@ -463,7 +486,7 @@ function MainApp() {
                       >
                         <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                         <span>
-                          {isClaimingYield ? 'Collecting Daily Operating Profits...' : "Collect Today's Profits to Wallet"}
+                          {isClaimingYield ? 'Processing 24h Server Schedule...' : "Process Due 24h Profits to Wallet"}
                         </span>
                       </button>
                     </div>

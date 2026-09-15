@@ -27,11 +27,11 @@ export const CustomerServiceModal: React.FC<CustomerServiceModalProps> = ({ onCl
   const faqs = [
     {
       q: 'How do Mobile Money deposits work on VENDRA?',
-      a: 'When you initiate a recharge of UGX 10,000 or more, you can pay via PesaPal (Cards/MoMo) or direct USSD prompt to your MTN or Airtel phone. Once verified, your balance is credited in the database ledger.'
+      a: 'When you initiate a recharge of UGX 500 or more, you can pay via PesaPal (Cards/MoMo) or direct USSD prompt to your MTN or Airtel phone. Once verified, your balance is credited in the database ledger.'
     },
     {
       q: 'What is the minimum withdrawal and how can I withdraw the welcome bonus?',
-      a: 'The minimum withdrawal is UGX 5,000. The UGX 5,000 welcome bonus can only be withdrawn once you have an active deposit (minimum recharge of UGX 10,000).'
+      a: 'The minimum withdrawal is UGX 5,000. The UGX 5,000 welcome bonus can only be withdrawn once you have an active deposit (minimum recharge of UGX 500).'
     },
     {
       q: 'How are product returns calculated?',

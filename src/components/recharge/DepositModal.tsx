@@ -8,11 +8,9 @@ import {
   Phone,
   RefreshCw,
   ShieldCheck,
-  Sparkles,
   X,
-  Zap
+  AlertCircle
 } from 'lucide-react';
-import { MobileMoneyProvider } from '../../types/index.ts';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { formatUGX } from '../../utils/currency.ts';
 
@@ -24,20 +22,13 @@ interface DepositModalProps {
 export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }) => {
   const { user, profile, token, refreshUserData } = useAuth();
 
-  const [amount, setAmount] = useState<number>(10000);
+  const [amount, setAmount] = useState<number>(500);
   const [customAmount, setCustomAmount] = useState<string>('');
-  const [provider, setProvider] = useState<MobileMoneyProvider>('PESAPAL');
   const [phoneNumber, setPhoneNumber] = useState<string>(user?.phone || '');
   const [email, setEmail] = useState<string>(profile?.email || '');
   const [fullName, setFullName] = useState<string>(profile?.full_name || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Step 2: Gateway Response state
-  const [initiatedDeposit, setInitiatedDeposit] = useState<{
-    reference: string;
-    ussdPromptInstruction: string;
-  } | null>(null);
 
   // PesaPal Session State
   const [pesapalSession, setPesapalSession] = useState<{
@@ -48,12 +39,12 @@ export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }
   } | null>(null);
 
   const [isCheckingPesaPalStatus, setIsCheckingPesaPalStatus] = useState(false);
-  const [pesapalStatusMessage, setPesapalStatusMessage] = useState<string>('Awaiting payment completion...');
+  const [pesapalStatus, setPesapalStatus] = useState<string>('PENDING');
+  const [pesapalStatusMessage, setPesapalStatusMessage] = useState<string>('Awaiting payment completion on PesaPal...');
   const [pesapalCompleted, setPesapalCompleted] = useState(false);
   const [showEmbeddedIframe, setShowEmbeddedIframe] = useState(false);
-  const [isSimulatingSuccess, setIsSimulatingSuccess] = useState(false);
 
-  const presetAmounts = [10000, 25000, 50000, 100000, 250000, 500000];
+  const presetAmounts = [500, 2000, 5000, 10000, 25000, 50000];
 
   // Auto-poll PesaPal status while modal is waiting on PesaPal checkout
   useEffect(() => {
@@ -66,13 +57,22 @@ export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }
           });
           if (res.ok) {
             const data = await res.json();
-            if (data.isCompleted) {
+            const status = (data.status || '').toUpperCase();
+            setPesapalStatus(status);
+
+            if (data.isCompleted || status === 'COMPLETED') {
               setPesapalCompleted(true);
-              setPesapalStatusMessage('Payment confirmed! Account balance credited.');
+              setPesapalStatusMessage('Payment confirmed by PesaPal! Account balance credited.');
               await refreshUserData();
               setTimeout(() => {
                 onSuccess();
-              }, 1800);
+              }, 2000);
+            } else if (status === 'FAILED') {
+              setPesapalStatusMessage('Payment marked as failed by PesaPal. Please try again.');
+            } else if (status === 'CANCELLED') {
+              setPesapalStatusMessage('Payment was cancelled on PesaPal.');
+            } else if (status === 'EXPIRED') {
+              setPesapalStatusMessage('Payment order has expired. Please initiate a new recharge.');
             }
           }
         } catch (_err) {
@@ -92,13 +92,13 @@ export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }
     e.preventDefault();
     const finalAmount = customAmount ? parseFloat(customAmount) : amount;
 
-    if (isNaN(finalAmount) || finalAmount < 10000) {
-      setError('Minimum recharge is UGX 10,000.');
+    if (isNaN(finalAmount) || finalAmount < 500) {
+      setError('Minimum recharge is UGX 500.');
       return;
     }
 
     if (!phoneNumber || phoneNumber.length < 9) {
-      setError('Please provide a valid Ugandan phone number.');
+      setError('Please provide a valid phone number.');
       return;
     }
 
@@ -114,7 +114,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }
         },
         body: JSON.stringify({
           amount: finalAmount,
-          provider,
+          provider: 'PESAPAL',
           phone_number: phoneNumber,
           email: email || undefined,
           full_name: fullName || undefined
@@ -123,10 +123,10 @@ export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to initiate deposit.');
+        throw new Error(data.error || 'Failed to initiate PesaPal payment.');
       }
 
-      if (provider === 'PESAPAL' && data.gateway?.redirect_url) {
+      if (data.gateway?.redirect_url) {
         setPesapalSession({
           reference: data.deposit.reference,
           orderTrackingId: data.gateway.order_tracking_id,
@@ -134,17 +134,14 @@ export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }
           amount: finalAmount
         });
 
-        // Open checkout in a popup window for convenient user payment
+        // Open checkout in a popup window for convenient payment
         try {
-          window.open(data.gateway.redirect_url, '_blank', 'width=580,height=720');
+          window.open(data.gateway.redirect_url, '_blank', 'width=600,height=750');
         } catch (_e) {
-          // If popup blocked, iframe or manual button handles it
+          // If popup blocked, direct button handles it
         }
       } else {
-        setInitiatedDeposit({
-          reference: data.deposit.reference,
-          ussdPromptInstruction: data.gateway.ussdPromptInstruction
-        });
+        throw new Error('PesaPal gateway did not return a valid checkout URL.');
       }
     } catch (err: any) {
       setError(err.message || 'Deposit initiation failed.');
@@ -164,15 +161,24 @@ export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to verify transaction.');
 
-      if (data.isCompleted) {
+      const status = (data.status || '').toUpperCase();
+      setPesapalStatus(status);
+
+      if (data.isCompleted || status === 'COMPLETED') {
         setPesapalCompleted(true);
-        setPesapalStatusMessage('Payment confirmed! Account balance credited.');
+        setPesapalStatusMessage('Payment confirmed by PesaPal! Account balance credited.');
         await refreshUserData();
         setTimeout(() => {
           onSuccess();
         }, 1500);
+      } else if (status === 'FAILED') {
+        setPesapalStatusMessage('Payment marked as failed by PesaPal. Please try again.');
+      } else if (status === 'CANCELLED') {
+        setPesapalStatusMessage('Payment was cancelled on PesaPal.');
+      } else if (status === 'EXPIRED') {
+        setPesapalStatusMessage('Payment order has expired. Please initiate a new recharge.');
       } else {
-        setPesapalStatusMessage(`Status: ${data.status || 'PENDING'}. Please complete payment on PesaPal.`);
+        setPesapalStatusMessage(`Status: ${data.status || 'PENDING'}. Complete authorization on the PesaPal checkout screen.`);
       }
     } catch (err: any) {
       setError(err.message || 'Status check failed.');
@@ -181,32 +187,13 @@ export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }
     }
   };
 
-  const handleSimulateInstantConfirm = async () => {
-    const reference = pesapalSession?.reference || initiatedDeposit?.reference;
-    if (!reference) return;
-    setIsSimulatingSuccess(true);
-    try {
-      const res = await fetch(`/api/deposits/${reference}/simulate-success`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Simulation failed.');
-
-      await refreshUserData();
-      onSuccess();
-    } catch (err: any) {
-      setError(err.message || 'Simulation failed.');
-    } finally {
-      setIsSimulatingSuccess(false);
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-fade-in">
-      <div className={`relative w-full ${showEmbeddedIframe ? 'max-w-2xl' : 'max-w-md'} bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-100 dark:border-slate-800 shadow-2xl overflow-y-auto max-h-[92vh] transition-all`}>
+      <div
+        className={`relative w-full ${
+          showEmbeddedIframe ? 'max-w-2xl' : 'max-w-md'
+        } bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-100 dark:border-slate-800 shadow-2xl overflow-y-auto max-h-[92vh] transition-all`}
+      >
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -216,7 +203,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }
         </button>
 
         {/* VIEW 1: Payment Initiation Form */}
-        {!initiatedDeposit && !pesapalSession && (
+        {!pesapalSession && (
           <form onSubmit={handleInitiate}>
             {/* Header */}
             <div className="flex items-center gap-2.5 mb-5">
@@ -228,91 +215,42 @@ export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }
                   Recharge Account
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Instant balance crediting via PesaPal, Cards & Mobile Money
+                  Instant balance crediting via Official PesaPal Gateway
                 </p>
               </div>
             </div>
 
-            {/* Provider Selector */}
+            {/* Exclusive PesaPal Gateway Indicator */}
             <div className="mb-4">
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 block">
-                Select Payment Method
+                Payment Gateway
               </label>
-              <div className="grid grid-cols-1 gap-2.5 mb-2.5">
-                {/* PesaPal Unified Gateway Option */}
-                <button
-                  type="button"
-                  onClick={() => setProvider('PESAPAL')}
-                  className={`p-3.5 rounded-2xl border flex items-center justify-between transition-all text-left ${
-                    provider === 'PESAPAL'
-                      ? 'border-orange-500 bg-orange-500/10 text-slate-900 dark:text-white font-bold ring-2 ring-orange-500/20'
-                      : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-600 dark:text-slate-400'
-                  }`}
-                >
+              <div className="p-3.5 rounded-2xl border border-orange-500 bg-orange-500/10 text-slate-900 dark:text-white font-bold ring-2 ring-orange-500/20">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
                       <CreditCard className="w-5 h-5" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-black">PesaPal Gateway</span>
+                        <span className="text-sm font-black">PesaPal Gateway</span>
                         <span className="px-1.5 py-0.5 text-[9px] font-extrabold uppercase rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                          Live Active
+                          Official Gateway
                         </span>
                       </div>
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400 block mt-0.5">
-                        Cards (Visa/Mastercard), MTN MoMo, Airtel Money & Bank
+                      <span className="text-[11px] text-slate-600 dark:text-slate-300 block mt-0.5">
+                        Accepts MTN Mobile Money, Airtel Money, Visa & Mastercard
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                      Unified
-                    </span>
-                  </div>
-                </button>
-              </div>
-
-              {/* Direct USSD Providers */}
-              <div className="grid grid-cols-2 gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setProvider('MTN_MOMO')}
-                  className={`p-3 rounded-2xl border flex items-center gap-2.5 transition-all ${
-                    provider === 'MTN_MOMO'
-                      ? 'border-amber-500 bg-amber-500/10 text-slate-900 dark:text-white font-bold ring-2 ring-amber-500/20'
-                      : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-600 dark:text-slate-400'
-                  }`}
-                >
-                  <div className="w-3.5 h-3.5 rounded-full bg-amber-400 flex-shrink-0" />
-                  <div className="text-left">
-                    <span className="text-xs block font-bold">MTN MoMo Direct</span>
-                    <span className="text-[10px] text-slate-400 block">*165*8# Prompt</span>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setProvider('AIRTEL_MONEY')}
-                  className={`p-3 rounded-2xl border flex items-center gap-2.5 transition-all ${
-                    provider === 'AIRTEL_MONEY'
-                      ? 'border-red-500 bg-red-500/10 text-slate-900 dark:text-white font-bold ring-2 ring-red-500/20'
-                      : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-600 dark:text-slate-400'
-                  }`}
-                >
-                  <div className="w-3.5 h-3.5 rounded-full bg-red-500 flex-shrink-0" />
-                  <div className="text-left">
-                    <span className="text-xs block font-bold">Airtel Direct</span>
-                    <span className="text-[10px] text-slate-400 block">*185# Prompt</span>
-                  </div>
-                </button>
+                </div>
               </div>
             </div>
 
             {/* Subscriber Phone */}
             <div className="mb-4">
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">
-                Contact Phone Number
+                Mobile / Contact Phone Number
               </label>
               <div className="relative">
                 <input
@@ -326,41 +264,37 @@ export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }
                 <Phone className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5 pointer-events-none" />
               </div>
               <span className="text-[10px] text-slate-400 mt-1 block">
-                {provider === 'PESAPAL'
-                  ? 'Used on the PesaPal receipt and Mobile Money dispatch.'
-                  : 'The USSD authorization push will be sent to this number.'}
+                Pre-filled on the PesaPal receipt and Mobile Money authorization screen.
               </span>
             </div>
 
-            {/* Optional Email & Name for PesaPal billing address */}
-            {provider === 'PESAPAL' && (
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                <div>
-                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1 block">
-                    Full Name (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={fullName}
-                    onChange={e => setFullName(e.target.value)}
-                    placeholder="e.g. Eagle Styles"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-orange-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1 block">
-                    Email Address (Optional)
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="e.g. name@domain.com"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-orange-500"
-                  />
-                </div>
+            {/* Billing Name & Email */}
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={e => setFullName(e.target.value)}
+                  placeholder="e.g. John Doe"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-orange-500"
+                />
               </div>
-            )}
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="e.g. name@domain.com"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-orange-500"
+                />
+              </div>
+            </div>
 
             {/* Amount Selection */}
             <div className="mb-5">
@@ -369,7 +303,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }
                   Select Recharge Amount
                 </label>
                 <span className="text-[10px] text-orange-600 dark:text-orange-400 font-semibold">
-                  Min: UGX 10,000
+                  Min: UGX 500
                 </span>
               </div>
 
@@ -398,8 +332,8 @@ export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }
               <div className="relative">
                 <input
                   type="number"
-                  min="10000"
-                  step="1000"
+                  min="500"
+                  step="100"
                   value={customAmount}
                   onChange={e => {
                     setCustomAmount(e.target.value);
@@ -407,7 +341,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }
                       setAmount(parseFloat(e.target.value) || 0);
                     }
                   }}
-                  placeholder="Or enter custom amount (Min: 10,000 UGX)"
+                  placeholder="Or enter custom amount (Min: 500 UGX)"
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-orange-500"
                 />
                 <span className="absolute right-3.5 top-2.5 text-xs text-slate-400 font-bold">UGX</span>
@@ -428,11 +362,11 @@ export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }
               {isSubmitting ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Connecting to {provider === 'PESAPAL' ? 'PesaPal Gateway' : 'Mobile Money'}...</span>
+                  <span>Connecting to PesaPal Gateway...</span>
                 </>
               ) : (
                 <span>
-                  Proceed to Pay • {formatUGX(customAmount ? parseFloat(customAmount) || 0 : amount)}
+                  Proceed to PesaPal • {formatUGX(customAmount ? parseFloat(customAmount) || 0 : amount)}
                 </span>
               )}
             </button>
@@ -451,11 +385,11 @@ export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }
                   Payment Confirmed!
                 </h3>
                 <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold mb-4">
-                  UGX {pesapalSession.amount.toLocaleString()} has been securely credited to your VENDRA balance.
+                  UGX {pesapalSession.amount.toLocaleString()} has been verified by PesaPal and credited to your VENDRA balance.
                 </p>
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs text-slate-500 dark:text-slate-400 text-left font-mono">
                   <div>Reference: {pesapalSession.reference}</div>
-                  <div>Tracking ID: {pesapalSession.orderTrackingId}</div>
+                  <div>PesaPal Tracking ID: {pesapalSession.orderTrackingId}</div>
                 </div>
               </div>
             ) : (
@@ -465,23 +399,23 @@ export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }
                     <CreditCard className="w-5 h-5" />
                   </div>
                   <h3 className="text-lg font-black text-slate-900 dark:text-white">
-                    PesaPal Live Payment
+                    PesaPal Payment Terminal
                   </h3>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-gradient-to-br from-orange-500/10 via-amber-500/5 to-transparent border border-orange-500/30 text-left mb-4">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs text-slate-500 dark:text-slate-400">Deposit Amount:</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">Recharge Amount:</span>
                     <span className="text-base font-black text-orange-600 dark:text-orange-400">
                       {formatUGX(pesapalSession.amount)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-xs text-slate-500 dark:text-slate-400 mb-1 font-mono">
-                    <span>Reference:</span>
+                    <span>Merchant Reference:</span>
                     <span className="font-bold text-slate-700 dark:text-slate-300">{pesapalSession.reference}</span>
                   </div>
                   <div className="flex justify-between items-center text-[10px] text-slate-400 font-mono">
-                    <span>Order Tracking ID:</span>
+                    <span>PesaPal Tracking ID:</span>
                     <span className="truncate max-w-[200px]">{pesapalSession.orderTrackingId}</span>
                   </div>
                 </div>
@@ -523,7 +457,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }
                       onClick={() => setShowEmbeddedIframe(true)}
                       className="w-full py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
                     >
-                      Pay Directly in Embedded Window
+                      Pay in Embedded Window
                     </button>
                   </div>
                 )}
@@ -534,37 +468,34 @@ export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }
                     <div className="flex items-center gap-2">
                       <RefreshCw className="w-3.5 h-3.5 text-orange-500 animate-spin" />
                       <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                        Live Gateway Listener
+                        Live PesaPal Listener
                       </span>
                     </div>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-600 dark:text-orange-400 font-bold">
-                      Polling Every 3s
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                        pesapalStatus === 'COMPLETED'
+                          ? 'bg-emerald-500/15 text-emerald-600'
+                          : pesapalStatus === 'FAILED' || pesapalStatus === 'CANCELLED'
+                          ? 'bg-rose-500/15 text-rose-600'
+                          : 'bg-orange-500/15 text-orange-600 dark:text-orange-400'
+                      }`}
+                    >
+                      {pesapalStatus}
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
                     {pesapalStatusMessage}
                   </p>
 
-                  <div className="mt-3 flex gap-2">
+                  <div className="mt-3">
                     <button
                       type="button"
                       onClick={checkManualPesaPalStatus}
                       disabled={isCheckingPesaPalStatus}
-                      className="flex-1 py-2 px-3 rounded-lg bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 dark:text-orange-400 text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                      className="w-full py-2 px-3 rounded-lg bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 dark:text-orange-400 text-xs font-bold transition-all flex items-center justify-center gap-1.5"
                     >
                       <RefreshCw className={`w-3.5 h-3.5 ${isCheckingPesaPalStatus ? 'animate-spin' : ''}`} />
-                      <span>Check Status Now</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleSimulateInstantConfirm}
-                      disabled={isSimulatingSuccess}
-                      title="Instantly verify webhook crediting in test mode"
-                      className="px-3 py-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition-all flex items-center gap-1"
-                    >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>{isSimulatingSuccess ? 'Confirming...' : 'Test Confirm'}</span>
+                      <span>{isCheckingPesaPalStatus ? 'Verifying with PesaPal API...' : 'Check Status Now'}</span>
                     </button>
                   </div>
                 </div>
@@ -584,63 +515,6 @@ export const DepositModal: React.FC<DepositModalProps> = ({ onClose, onSuccess }
                 </button>
               </div>
             )}
-          </div>
-        )}
-
-        {/* VIEW 3: Direct USSD Prompt Screen */}
-        {initiatedDeposit && !pesapalSession && (
-          <div className="text-center py-2">
-            <div className="w-16 h-16 rounded-3xl bg-amber-500/15 border border-amber-500/30 text-amber-500 flex items-center justify-center mx-auto mb-4 animate-bounce">
-              <Phone className="w-8 h-8" />
-            </div>
-
-            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">
-              USSD Prompt Dispatched
-            </h3>
-
-            <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/40 text-left text-xs text-amber-900 dark:text-amber-200 mb-4 leading-relaxed">
-              <span className="font-bold block mb-1">Instruction:</span>
-              {initiatedDeposit.ussdPromptInstruction}
-            </div>
-
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400 mb-5 text-left">
-              <div className="flex justify-between py-1">
-                <span>Transaction Reference:</span>
-                <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
-                  {initiatedDeposit.reference}
-                </span>
-              </div>
-              <div className="flex justify-between py-1">
-                <span>Status:</span>
-                <span className="font-bold text-amber-500">PENDING_APPROVAL</span>
-              </div>
-            </div>
-
-            <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 mb-4 text-left">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800 dark:text-emerald-300 mb-1">
-                <Sparkles className="w-4 h-4 text-emerald-600" />
-                <span>Sandbox Operator Confirmation</span>
-              </div>
-              <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mb-2.5">
-                Simulate successful PIN authorization to verify that the server-side ledger credits the account balance immediately.
-              </p>
-              <button
-                type="button"
-                onClick={handleSimulateInstantConfirm}
-                disabled={isSimulatingSuccess}
-                className="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition-all active:scale-95 disabled:opacity-50"
-              >
-                {isSimulatingSuccess ? 'Verifying Gateway Webhook...' : 'Simulate Instant Payment Confirmation'}
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 font-medium py-2"
-            >
-              Close and Check Status Later
-            </button>
           </div>
         )}
       </div>

@@ -28,14 +28,14 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({ onClose, onSuccess
   } | null>(null);
 
   const numAmount = parseFloat(amount) || 0;
-  const hasActiveRecharge = summary.has_active_recharge ?? (summary.total_deposits >= 10000);
+  const hasActiveRecharge = summary.has_active_recharge ?? (summary.total_deposits >= 500);
   const isBalanceSufficient = summary.available_balance >= numAmount;
 
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!hasActiveRecharge) {
-      setError('Active recharge required: You must have at least one active recharge (min UGX 10,000) to activate withdrawals.');
+      setError('Active recharge required: You must have at least one active recharge (min UGX 500) to activate withdrawals.');
       return;
     }
 
@@ -228,7 +228,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({ onClose, onSuccess
                       Active Deposit Required to Withdraw
                     </strong>
                     <p className="text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
-                      The <strong>UGX 5,000 Welcome Bonus</strong> and platform yields can only be withdrawn once you have an active deposit (minimum recharge of UGX 10,000).
+                      The <strong>UGX 5,000 Welcome Bonus</strong> and platform yields can only be withdrawn once you have an active deposit (minimum recharge of UGX 500).
                     </p>
                     {onOpenDeposit && (
                       <button
@@ -239,7 +239,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({ onClose, onSuccess
                         }}
                         className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold text-[11px] shadow-sm hover:brightness-105"
                       >
-                        Deposit Now (Min UGX 10,000)
+                        Deposit Now (Min UGX 500)
                       </button>
                     )}
                   </div>

@@ -197,15 +197,15 @@ const DEFAULT_PRODUCTS: Product[] = [
 ];
 
 const DEFAULT_SETTINGS: Record<string, string> = {
-  min_deposit_ugx: '10000',
+  min_deposit_ugx: '500',
   min_withdrawal_ugx: '5000',
   max_withdrawal_ugx: '5000000',
   l1_referral_percentage: '35.0',
   l2_referral_percentage: '6.0',
-  referral_eligibility_min_deposit: '10000',
+  referral_eligibility_min_deposit: '500',
   welcome_bonus_ugx: '5000',
   maintenance_mode: 'false',
-  momo_gateway_mode: 'sandbox',
+  momo_gateway_mode: 'live',
   whatsapp_support_url: 'https://wa.me/qr/C3VMQ7Y7TXH6B1',
   telegram_channel_url: 'https://t.me/vendraplatiform',
   platform_announcement: 'Welcome to VENDRA Commercial Platform. Earn 35% Level 1 & 6% Level 2 referral commissions on member deposits.'
@@ -269,11 +269,12 @@ class RelationalDatabase {
       }
 
       // Ensure platform settings reflect latest policy
-      this.store.platform_settings.min_deposit_ugx = '10000';
+      this.store.platform_settings.min_deposit_ugx = '500';
       this.store.platform_settings.min_withdrawal_ugx = '5000';
       this.store.platform_settings.l1_referral_percentage = '35.0';
       this.store.platform_settings.l2_referral_percentage = '6.0';
-      this.store.platform_settings.referral_eligibility_min_deposit = '10000';
+      this.store.platform_settings.referral_eligibility_min_deposit = '500';
+      this.store.platform_settings.momo_gateway_mode = 'live';
 
       // Ensure authorized VendraAdmin super admin exists with exact requested credentials
       const vendraAdmin = this.store.users.find(
@@ -407,7 +408,25 @@ class RelationalDatabase {
 
   private persist() {
     try {
-      fs.writeFileSync(DB_FILE, JSON.stringify(this.store, null, 2), 'utf-8');
+      const dataStr = JSON.stringify(this.store, null, 2);
+      const targetDir = path.dirname(DB_FILE);
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+      fs.writeFileSync(DB_FILE, dataStr, 'utf-8');
+
+      // Also mirror to bundled file location to ensure survival across fresh container instances
+      if (DB_FILE !== BUNDLED_DB_FILE) {
+        try {
+          const bundledDir = path.dirname(BUNDLED_DB_FILE);
+          if (!fs.existsSync(bundledDir)) {
+            fs.mkdirSync(bundledDir, { recursive: true });
+          }
+          fs.writeFileSync(BUNDLED_DB_FILE, dataStr, 'utf-8');
+        } catch (_bundledErr) {
+          // Ignore secondary write errors in constrained environments
+        }
+      }
     } catch (err) {
       console.error('Failed to persist database:', err);
     }
@@ -497,7 +516,7 @@ class RelationalDatabase {
     }
 
     const available_balance = Math.max(0, credits - debits);
-    const minDepositReq = parseFloat(this.store.platform_settings.min_deposit_ugx || '10000');
+    const minDepositReq = parseFloat(this.store.platform_settings.min_deposit_ugx || '500');
     const has_active_recharge = totalDeposits >= minDepositReq;
     const can_withdraw = has_active_recharge;
     const welcome_bonus_claimed = userTx.some(t => t.reference.includes('BONUS-WELCOME'));
@@ -806,7 +825,7 @@ class RelationalDatabase {
 
     // Ledger verification: check active deposit & available balance
     const summary = this.calculateUserFinancialSummary(userId);
-    const minDeposit = parseFloat(this.store.platform_settings.min_deposit_ugx || '10000');
+    const minDeposit = parseFloat(this.store.platform_settings.min_deposit_ugx || '500');
 
     // Strict Rule: No one can use the welcome bonus to buy products without an active deposit!
     if (!summary.has_active_recharge || summary.total_deposits < minDeposit) {
@@ -838,8 +857,9 @@ class RelationalDatabase {
     const endDate = new Date(now.getTime() + product.duration_days * 24 * 60 * 60 * 1000);
     const purchaseId = `pur-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-    // Initial operating profit credited immediately upon active purchase
     const dailyIncome = product.daily_income || Math.round(product.price * product.return_rate);
+    const activatedAt = now.toISOString();
+    const nextProfitDueAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
 
     const purchase: ProductPurchase = {
       id: purchaseId,
@@ -850,12 +870,21 @@ class RelationalDatabase {
       projected_reward: projectedReward,
       return_rate: product.return_rate,
       duration_days: product.duration_days,
-      start_date: now.toISOString(),
+      start_date: activatedAt,
       end_date: endDate.toISOString(),
       status: 'ACTIVE',
-      credited_rewards: dailyIncome,
-      last_accrual_at: now.toISOString(),
-      created_at: now.toISOString()
+      credited_rewards: 0, // 24-hour cycle rule: initial rewards start at 0 until exactly 24 hours elapse
+      last_accrual_at: null,
+      created_at: activatedAt,
+      // 24-Hour Server-Side Profit Generation Fields
+      activated_at: activatedAt,
+      next_profit_due_at: nextProfitDueAt,
+      profit_status: 'PENDING_24H',
+      cycles_completed: 0,
+      last_processed_transaction_id: null,
+      pesapal_tracking_id: null,
+      pesapal_reference: null,
+      payment_method: 'BALANCE'
     };
 
     // Ledger debit transaction
@@ -867,31 +896,11 @@ class RelationalDatabase {
       'SUCCESSFUL',
       'PRODUCT_PURCHASE_ENGINE',
       `Purchased ${product.name} (${product.duration_days} days term)`,
-      JSON.stringify({ productId: product.id, projectedReward })
+      JSON.stringify({ productId: product.id, projectedReward, activatedAt, nextProfitDueAt })
     );
 
+    purchase.last_processed_transaction_id = tx.id;
     this.store.product_purchases.push(purchase);
-
-    // Immediately record Day 1 operating profit so user's profits appear on their dashboard right away!
-    if (dailyIncome > 0) {
-      this.recordTransaction(
-        userId,
-        dailyIncome,
-        'PRODUCT_REWARD',
-        `REW-ACTIVATION-${purchaseId.toUpperCase()}`,
-        'SUCCESSFUL',
-        'EQUIPMENT_REWARD_ENGINE',
-        `Day 1 operating profit for ${product.name}`,
-        JSON.stringify({ purchaseId: purchase.id, dailyIncome })
-      );
-
-      this.addNotification(
-        userId,
-        'Operating Profit Credited to Dashboard',
-        `🎉 Congratulations! Day 1 operating profit of +UGX ${dailyIncome.toLocaleString()} from ${product.name} has been credited to your dashboard balance.`,
-        'reward'
-      );
-    }
 
     // Trigger legitimate referral rewards for qualifying purchase
     this.processReferralRewards(userId, tx.id, product.price);
@@ -899,57 +908,210 @@ class RelationalDatabase {
     // Notification
     this.addNotification(
       userId,
-      'Product Participation Confirmed',
-      `You have successfully acquired ${product.name} for UGX ${product.price.toLocaleString()}. Projected term reward: UGX ${projectedReward.toLocaleString()}.`,
+      'Investment Activated — 24-Hour Cycle Started',
+      `You have successfully acquired ${product.name} for UGX ${product.price.toLocaleString()}. Your 24-hour profit cycle has begun. First scheduled operating profit will be generated in exactly 24 hours.`,
       'purchase'
     );
 
-    this.addAuditLog(userId, 'user', 'PRODUCT_PURCHASED', 'product_purchases', purchase.id, `Purchased ${product.name} for UGX ${product.price}`);
+    this.addAuditLog(userId, 'user', 'PRODUCT_PURCHASED', 'product_purchases', purchase.id, `Purchased ${product.name} for UGX ${product.price}. 24h profit due: ${nextProfitDueAt}`);
 
     this.persist();
     return purchase;
   }
 
-  public claimUserProductYield(userId: string): { claimed: number; count: number } {
+  // PESAPAL DIRECT INVESTMENT ACTIVATION
+  public activateProductFromPesaPal(
+    userId: string,
+    productId: string,
+    pesapalTrackingId: string,
+    pesapalReference: string
+  ): ProductPurchase {
+    // Idempotency: prevent duplicate investment activation
+    const existing = this.store.product_purchases.find(
+      p => p.pesapal_tracking_id === pesapalTrackingId
+    );
+    if (existing) {
+      return existing;
+    }
+
+    const product = this.getProductById(productId);
+    if (!product) throw new Error('Investment product not found.');
+
+    let projectedReward = product.total_revenue || 0;
+    if (!projectedReward) {
+      if (product.daily_income) {
+        projectedReward = product.daily_income * product.duration_days;
+      } else if (product.return_type === 'daily_percentage') {
+        projectedReward = Math.round(product.price * product.return_rate * product.duration_days);
+      } else {
+        projectedReward = Math.round(product.return_rate);
+      }
+    }
+
+    const now = new Date();
+    const activatedAt = now.toISOString();
+    const nextProfitDueAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
+    const endDate = new Date(now.getTime() + product.duration_days * 24 * 60 * 60 * 1000);
+    const purchaseId = `pur-pesa-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+    const purchase: ProductPurchase = {
+      id: purchaseId,
+      user_id: userId,
+      product_id: product.id,
+      product_name: product.name,
+      amount_paid: product.price,
+      projected_reward: projectedReward,
+      return_rate: product.return_rate,
+      duration_days: product.duration_days,
+      start_date: activatedAt,
+      end_date: endDate.toISOString(),
+      status: 'ACTIVE',
+      credited_rewards: 0,
+      last_accrual_at: null,
+      created_at: activatedAt,
+      activated_at: activatedAt,
+      next_profit_due_at: nextProfitDueAt,
+      profit_status: 'PENDING_24H',
+      cycles_completed: 0,
+      last_processed_transaction_id: null,
+      pesapal_tracking_id: pesapalTrackingId,
+      pesapal_reference: pesapalReference,
+      payment_method: 'PESAPAL'
+    };
+
+    // Record PesaPal purchase transaction
+    const tx = this.recordTransaction(
+      userId,
+      product.price,
+      'PRODUCT_PURCHASE',
+      `PESA-PUR-${purchaseId.toUpperCase()}`,
+      'SUCCESSFUL',
+      'PESAPAL_PAYMENT_GATEWAY',
+      `Direct PesaPal Purchase: ${product.name} (Tracking ID: ${pesapalTrackingId})`,
+      JSON.stringify({
+        productId: product.id,
+        pesapalTrackingId,
+        pesapalReference,
+        activatedAt,
+        nextProfitDueAt
+      })
+    );
+
+    purchase.last_processed_transaction_id = tx.id;
+    this.store.product_purchases.push(purchase);
+
+    // Process referral commissions for the inviter
+    this.processReferralRewards(userId, tx.id, product.price);
+
+    this.addNotification(
+      userId,
+      'PesaPal Payment Confirmed — Investment Activated',
+      `Payment of UGX ${product.price.toLocaleString()} verified by PesaPal. ${product.name} is now active. Your 24-hour profit cycle has started and first yield will be generated in 24 hours.`,
+      'purchase'
+    );
+
+    this.addAuditLog(
+      userId,
+      'user',
+      'PRODUCT_ACTIVATED_PESAPAL',
+      'product_purchases',
+      purchase.id,
+      `PesaPal Order ${pesapalTrackingId} confirmed for ${product.name}. 24h profit cycle active.`
+    );
+
+    this.persist();
+    return purchase;
+  }
+
+  public claimUserProductYield(userId: string): {
+    claimed: number;
+    count: number;
+    pendingCount: number;
+    nextDueInHours: number;
+  } {
     const userPurchases = this.store.product_purchases.filter(
       p => p.user_id === userId && p.status === 'ACTIVE'
     );
     if (userPurchases.length === 0) {
-      return { claimed: 0, count: 0 };
+      return { claimed: 0, count: 0, pendingCount: 0, nextDueInHours: 24 };
     }
 
     let totalClaimed = 0;
     let count = 0;
+    let pendingCount = 0;
+    let minRemainingHours = 24;
     const now = new Date();
+    const nowTime = now.getTime();
 
     for (const purchase of userPurchases) {
       const productDef = this.store.products.find(p => p.id === purchase.product_id);
       const dailyReward = productDef?.daily_income || Math.round(purchase.amount_paid * purchase.return_rate);
 
-      if (dailyReward > 0 && purchase.credited_rewards + dailyReward <= purchase.projected_reward) {
-        purchase.credited_rewards += dailyReward;
-        purchase.last_accrual_at = now.toISOString();
+      // Server-side timestamp verification
+      const activatedTime = new Date(purchase.activated_at || purchase.start_date).getTime();
+      const currentDueTime = purchase.next_profit_due_at
+        ? new Date(purchase.next_profit_due_at).getTime()
+        : activatedTime + 24 * 60 * 60 * 1000;
 
-        this.recordTransaction(
-          userId,
-          dailyReward,
-          'PRODUCT_REWARD',
-          `REW-${purchase.id}-${Date.now()}`,
-          'SUCCESSFUL',
-          'EQUIPMENT_REWARD_ENGINE',
-          `Operating profit yield for ${purchase.product_name}`,
-          JSON.stringify({ purchaseId: purchase.id })
-        );
+      // Check if 24 hours have elapsed
+      if (nowTime >= currentDueTime) {
+        if (dailyReward > 0 && purchase.credited_rewards < purchase.projected_reward) {
+          const nextCycle = (purchase.cycles_completed || 0) + 1;
+          const txRef = `REW-24H-${purchase.id}-CYCLE-${nextCycle}`;
 
-        this.addNotification(
-          userId,
-          'Operating Profit Credited',
-          `+UGX ${dailyReward.toLocaleString()} operating profit has been credited to your dashboard from ${purchase.product_name}.`,
-          'reward'
-        );
+          // Prevent duplicate generation: ensure txRef is unique
+          const alreadyProcessed = this.store.transactions.some(t => t.reference === txRef);
+          if (!alreadyProcessed) {
+            const tx = this.recordTransaction(
+              userId,
+              dailyReward,
+              'PRODUCT_REWARD',
+              txRef,
+              'SUCCESSFUL',
+              '24H_SERVER_PROFIT_ENGINE',
+              `24-Hour operating profit for ${purchase.product_name} (Cycle ${nextCycle})`,
+              JSON.stringify({
+                purchaseId: purchase.id,
+                cycle: nextCycle,
+                activatedAt: purchase.activated_at,
+                processedAt: now.toISOString()
+              })
+            );
 
-        totalClaimed += dailyReward;
-        count++;
+            purchase.credited_rewards += dailyReward;
+            purchase.cycles_completed = nextCycle;
+            purchase.last_accrual_at = now.toISOString();
+            purchase.last_processed_transaction_id = tx.id;
+
+            // Schedule next 24-hour cycle
+            const nextDue = new Date(currentDueTime + 24 * 60 * 60 * 1000);
+            purchase.next_profit_due_at = nextDue.toISOString();
+
+            if (purchase.credited_rewards >= purchase.projected_reward || purchase.cycles_completed >= purchase.duration_days) {
+              purchase.status = 'COMPLETED';
+              purchase.profit_status = 'CYCLE_FINISHED';
+            } else {
+              purchase.profit_status = 'PENDING_24H';
+            }
+
+            this.addNotification(
+              userId,
+              '24-Hour Profit Processed',
+              `+UGX ${dailyReward.toLocaleString()} 24-hour scheduled profit from ${purchase.product_name} has been processed and credited to your wallet balance.`,
+              'reward'
+            );
+
+            totalClaimed += dailyReward;
+            count++;
+          }
+        }
+      } else {
+        // Profit is still pending 24-hour maturation
+        pendingCount++;
+        const remainingHours = Math.max(1, Math.ceil((currentDueTime - nowTime) / (1000 * 60 * 60)));
+        if (remainingHours < minRemainingHours) {
+          minRemainingHours = remainingHours;
+        }
       }
     }
 
@@ -957,79 +1119,113 @@ class RelationalDatabase {
       this.persist();
     }
 
-    return { claimed: totalClaimed, count };
+    return {
+      claimed: totalClaimed,
+      count,
+      pendingCount,
+      nextDueInHours: minRemainingHours
+    };
   }
 
   public getUserPurchases(userId: string): ProductPurchase[] {
     return this.store.product_purchases.filter(p => p.user_id === userId);
   }
 
-  // ACCRUE DAILY REWARDS (Deterministic batch job based on legitimate product duration)
+  // ACCRUE 24-HOUR PROFITS (Server-Authoritative Batch Process)
   public accrueActiveProductRewards(): { processed: number; totalCredited: number } {
     let processed = 0;
     let totalCredited = 0;
     const now = new Date();
+    const nowTime = now.getTime();
 
     for (const purchase of this.store.product_purchases) {
       if (purchase.status !== 'ACTIVE') continue;
 
-      const lastAccrual = purchase.last_accrual_at ? new Date(purchase.last_accrual_at) : new Date(purchase.start_date);
-      const hoursSinceLast = (now.getTime() - lastAccrual.getTime()) / (1000 * 60 * 60);
+      const activatedTime = new Date(purchase.activated_at || purchase.start_date).getTime();
+      const currentDueTime = purchase.next_profit_due_at
+        ? new Date(purchase.next_profit_due_at).getTime()
+        : activatedTime + 24 * 60 * 60 * 1000;
 
-      // Accrue on a 24-hour cycle or when matured
-      const endDate = new Date(purchase.end_date);
-      const isMatured = now >= endDate;
-
-      if (hoursSinceLast >= 24 || isMatured) {
+      // Only generate profit if exactly 24 hours have elapsed
+      if (nowTime >= currentDueTime) {
         const productDef = this.store.products.find(p => p.id === purchase.product_id);
         const dailyReward = productDef?.daily_income || Math.round(purchase.amount_paid * purchase.return_rate);
-        if (dailyReward > 0 && purchase.credited_rewards + dailyReward <= purchase.projected_reward) {
-          purchase.credited_rewards += dailyReward;
-          purchase.last_accrual_at = now.toISOString();
 
-          this.recordTransaction(
-            purchase.user_id,
-            dailyReward,
-            'PRODUCT_REWARD',
-            `REW-${purchase.id}-${Date.now()}`,
-            'SUCCESSFUL',
-            'REWARD_DISTRIBUTOR',
-            `Daily equipment operating yield for ${purchase.product_name}`,
-            JSON.stringify({ purchaseId: purchase.id })
-          );
+        if (dailyReward > 0 && purchase.credited_rewards < purchase.projected_reward) {
+          const nextCycle = (purchase.cycles_completed || 0) + 1;
+          const txRef = `REW-24H-${purchase.id}-CYCLE-${nextCycle}`;
 
-          this.addNotification(
-            purchase.user_id,
-            'Yield Reward Credited',
-            `UGX ${dailyReward.toLocaleString()} operating reward credited to your available balance from ${purchase.product_name}.`,
-            'reward'
-          );
+          // Duplicate prevention check
+          const alreadyProcessed = this.store.transactions.some(t => t.reference === txRef);
+          if (!alreadyProcessed) {
+            const tx = this.recordTransaction(
+              purchase.user_id,
+              dailyReward,
+              'PRODUCT_REWARD',
+              txRef,
+              'SUCCESSFUL',
+              '24H_SERVER_PROFIT_ENGINE',
+              `24-Hour operating profit for ${purchase.product_name} (Cycle ${nextCycle})`,
+              JSON.stringify({
+                purchaseId: purchase.id,
+                cycle: nextCycle,
+                activatedAt: purchase.activated_at,
+                processedAt: now.toISOString()
+              })
+            );
 
-          totalCredited += dailyReward;
-          processed++;
+            purchase.credited_rewards += dailyReward;
+            purchase.cycles_completed = nextCycle;
+            purchase.last_accrual_at = now.toISOString();
+            purchase.last_processed_transaction_id = tx.id;
+
+            // Advance to next 24-hour cycle
+            const nextDue = new Date(currentDueTime + 24 * 60 * 60 * 1000);
+            purchase.next_profit_due_at = nextDue.toISOString();
+
+            if (purchase.credited_rewards >= purchase.projected_reward || purchase.cycles_completed >= purchase.duration_days) {
+              purchase.status = 'COMPLETED';
+              purchase.profit_status = 'CYCLE_FINISHED';
+            } else {
+              purchase.profit_status = 'PENDING_24H';
+            }
+
+            this.addNotification(
+              purchase.user_id,
+              '24-Hour Profit Credited',
+              `+UGX ${dailyReward.toLocaleString()} 24-hour scheduled profit from ${purchase.product_name} has been credited to your available balance.`,
+              'reward'
+            );
+
+            totalCredited += dailyReward;
+            processed++;
+          }
         }
+      }
 
-        if (isMatured) {
-          purchase.status = 'COMPLETED';
-          // Also return principal at maturity
-          this.recordTransaction(
-            purchase.user_id,
-            purchase.amount_paid,
-            'ADJUSTMENT_CREDIT',
-            `MAT-${purchase.id}-${Date.now()}`,
-            'SUCCESSFUL',
-            'MATURITY_ENGINE',
-            `Principal capital release upon maturity of ${purchase.product_name}`,
-            JSON.stringify({ purchaseId: purchase.id })
-          );
+      // Check if full duration has matured
+      const endDate = new Date(purchase.end_date);
+      if (nowTime >= endDate.getTime() && purchase.status === 'ACTIVE') {
+        purchase.status = 'COMPLETED';
+        purchase.profit_status = 'CYCLE_FINISHED';
+        // Return principal at maturity
+        this.recordTransaction(
+          purchase.user_id,
+          purchase.amount_paid,
+          'ADJUSTMENT_CREDIT',
+          `MAT-${purchase.id}-${Date.now()}`,
+          'SUCCESSFUL',
+          'MATURITY_ENGINE',
+          `Principal capital release upon maturity of ${purchase.product_name}`,
+          JSON.stringify({ purchaseId: purchase.id })
+        );
 
-          this.addNotification(
-            purchase.user_id,
-            'Equipment Term Matured',
-            `Your term for ${purchase.product_name} has matured. Principal capital UGX ${purchase.amount_paid.toLocaleString()} has been unlocked and credited.`,
-            'reward'
-          );
-        }
+        this.addNotification(
+          purchase.user_id,
+          'Equipment Term Matured',
+          `Your term for ${purchase.product_name} has matured. Principal capital UGX ${purchase.amount_paid.toLocaleString()} has been unlocked and credited.`,
+          'reward'
+        );
       }
     }
 
@@ -1044,7 +1240,7 @@ class RelationalDatabase {
   public processReferralRewards(inviteeId: string, qualifyingTxId: string, qualifyingAmount: number) {
     const l1Percent = parseFloat(this.store.platform_settings.l1_referral_percentage || '35.0');
     const l2Percent = parseFloat(this.store.platform_settings.l2_referral_percentage || '6.0');
-    const minQualifyingDeposit = parseFloat(this.store.platform_settings.referral_eligibility_min_deposit || '10000');
+    const minQualifyingDeposit = parseFloat(this.store.platform_settings.referral_eligibility_min_deposit || '500');
 
     // "only commissioned after the referrals deposit"
     const inviteeSummary = this.calculateUserFinancialSummary(inviteeId);
@@ -1157,7 +1353,7 @@ class RelationalDatabase {
     pesapalOrderTrackingId?: string,
     pesapalRedirectUrl?: string
   ): Deposit {
-    const minDeposit = parseFloat(this.store.platform_settings.min_deposit_ugx || '10000');
+    const minDeposit = parseFloat(this.store.platform_settings.min_deposit_ugx || '500');
     if (amount < minDeposit) {
       throw new Error(`Minimum recharge is UGX ${minDeposit.toLocaleString()}`);
     }
@@ -1364,8 +1560,9 @@ class RelationalDatabase {
     // 5k welcome bonus and earnings are withdrawable after active deposit
     const summary = this.calculateUserFinancialSummary(userId);
     if (!summary.has_active_recharge) {
+      const minDep = parseFloat(this.store.platform_settings.min_deposit_ugx || '500');
       throw new Error(
-        'Active recharge required: You must make at least one recharge (minimum UGX 10,000) to activate withdrawals. Your UGX 5,000 welcome bonus and rewards are unlocked immediately once your first recharge is confirmed.'
+        `Active recharge required: You must make at least one recharge (minimum UGX ${minDep.toLocaleString()}) to activate withdrawals. Your UGX 5,000 welcome bonus and rewards are unlocked immediately once your first recharge is confirmed.`
       );
     }
 
@@ -1648,7 +1845,7 @@ class RelationalDatabase {
     const userRewards = this.store.referral_rewards.filter(r => r.inviter_id === userId);
     const totalReferralRewards = userRewards.reduce((sum, r) => sum + r.amount, 0);
 
-    const minDeposit = parseFloat(this.store.platform_settings.referral_eligibility_min_deposit || '10000');
+    const minDeposit = parseFloat(this.store.platform_settings.referral_eligibility_min_deposit || '500');
 
     // Fetch team member profile details & qualified status
     const teamMembers = directRel.map(r => {
@@ -1890,7 +2087,7 @@ class RelationalDatabase {
         l2Rate: parseFloat(this.store.platform_settings.l2_referral_percentage || '6.0'),
         minWithdrawalUGX: parseFloat(this.store.platform_settings.min_withdrawal_ugx || '5000'),
         maxWithdrawalUGX: parseFloat(this.store.platform_settings.max_withdrawal_ugx || '5000000'),
-        minDepositUGX: parseFloat(this.store.platform_settings.min_deposit_ugx || '10000')
+        minDepositUGX: parseFloat(this.store.platform_settings.min_deposit_ugx || '500')
       }
     };
   }

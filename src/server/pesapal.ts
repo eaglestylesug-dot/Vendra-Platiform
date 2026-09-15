@@ -16,7 +16,7 @@ const BASE_URL =
 
 let cachedToken: string | null = null;
 let tokenExpiryTimestamp = 0;
-let cachedIpnId: string | null = process.env.PESAPAL_IPN_ID || 'bbeafde2-0a75-490d-b5ec-da4ae9b84d94';
+let cachedIpnId: string | null = process.env.PESAPAL_IPN_ID || '11187eae-f61b-4793-b72e-d9e7bc46d45f';
 
 export interface PesaPalBillingAddress {
   email_address?: string;

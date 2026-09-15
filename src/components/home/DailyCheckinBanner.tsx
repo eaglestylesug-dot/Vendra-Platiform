@@ -151,7 +151,7 @@ export const DailyCheckinBanner: React.FC<DailyCheckinBannerProps> = ({ onOpenDe
             <p className="text-[10px] text-slate-300 dark:text-slate-400 truncate mt-0.5">
               {hasActiveRecharge
                 ? 'Active recharge verified: All earnings & bonuses are fully withdrawable.'
-                : 'Deposit min UGX 10,000 to unlock withdrawal of your UGX 5,000 welcome bonus & earnings.'}
+                : 'Deposit min UGX 500 to unlock withdrawal of your UGX 5,000 welcome bonus & earnings.'}
             </p>
           </div>
         </div>

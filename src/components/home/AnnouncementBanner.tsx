@@ -9,7 +9,7 @@ export const AnnouncementBanner: React.FC = () => {
       </div>
       <div className="overflow-hidden whitespace-nowrap text-xs font-medium flex-1">
         <span className="inline-block animate-marquee">
-          📢 VENDRA Verified Ledger: Instant MTN & Airtel Uganda Mobile Money processing active. Minimum deposit UGX 10,000. Term yields are distributed daily based on audited equipment operation.
+          📢 VENDRA Verified Ledger: Instant MTN & Airtel Uganda Mobile Money processing active. Minimum deposit UGX 500. Term yields are distributed daily based on audited equipment operation.
         </span>
       </div>
     </div>

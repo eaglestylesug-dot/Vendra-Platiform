@@ -1148,11 +1148,11 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                     </label>
                     <input
                       type="number"
-                      defaultValue={settings.min_deposit_ugx || 10000}
+                      defaultValue={settings.min_deposit_ugx || 500}
                       onBlur={e => handleSaveSetting('min_deposit_ugx', Number(e.target.value))}
                       className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-bold"
                     />
-                    <span className="text-[10px] text-slate-400 mt-1 block">Default: UGX 10,000</span>
+                    <span className="text-[10px] text-slate-400 mt-1 block">Default: UGX 500</span>
                   </div>
 
                   <div>
@@ -1219,7 +1219,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                     </label>
                     <input
                       type="number"
-                      defaultValue={settings.referral_eligibility_min_deposit || 10000}
+                      defaultValue={settings.referral_eligibility_min_deposit || 500}
                       onBlur={e => handleSaveSetting('referral_eligibility_min_deposit', Number(e.target.value))}
                       className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-bold"
                     />
@@ -1281,12 +1281,12 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                     Mobile Money Gateway Environment
                   </label>
                   <select
-                    defaultValue={settings.momo_gateway_mode || 'sandbox'}
+                    defaultValue={settings.momo_gateway_mode || 'live'}
                     onChange={e => handleSaveSetting('momo_gateway_mode', e.target.value)}
                     className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-bold"
                   >
-                    <option value="sandbox">Sandbox (Testing / Instant Simulation Mode)</option>
                     <option value="live">Live Uganda Production Gateway (MTN & Airtel MoMo)</option>
+                    <option value="sandbox">Sandbox (Testing / Instant Simulation Mode)</option>
                   </select>
                 </div>
               </div>

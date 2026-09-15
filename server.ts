@@ -1,11 +1,20 @@
 import express from 'express';
 import path from 'path';
+import cors from 'cors';
 import { createServer as createViteServer } from 'vite';
 import apiRouter from './src/server/routes.ts';
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
+
+  // CORS Middleware - allow cross-origin requests from preview iframes, Google AI Studio, and local dev
+  app.use(cors({
+    origin: true,
+    credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'x-client-info']
+  }));
 
   // Middlewares
   app.use(express.json());
@@ -38,6 +47,18 @@ async function startServer() {
       error: `API endpoint not found: ${req.method} ${req.originalUrl}`,
       status: 404
     });
+  });
+
+  // Global error handler for API
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (req.path.startsWith('/api')) {
+      console.error('[API Uncaught Error]', err);
+      return res.status(500).json({
+        error: err.message || 'Internal server error occurred.',
+        status: 500
+      });
+    }
+    next(err);
   });
 
   // Vite middleware for development

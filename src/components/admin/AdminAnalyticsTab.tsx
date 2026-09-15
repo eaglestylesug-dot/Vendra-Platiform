@@ -119,40 +119,27 @@ export const AdminAnalyticsTab: React.FC = () => {
     fetchAnalytics(false);
   };
 
-  // Fallback demo data while loading or if data is empty
-  const regData = data?.userRegistrationTrend || [
-    { date: 'Day 1', newUsers: 4, cumulativeUsers: 4 },
-    { date: 'Day 2', newUsers: 6, cumulativeUsers: 10 },
-    { date: 'Day 3', newUsers: 9, cumulativeUsers: 19 },
-    { date: 'Day 4', newUsers: 12, cumulativeUsers: 31 },
-    { date: 'Day 5', newUsers: 15, cumulativeUsers: 46 },
-    { date: 'Day 6', newUsers: 18, cumulativeUsers: 64 },
-    { date: 'Day 7', newUsers: 22, cumulativeUsers: 86 }
-  ];
+  const regData = (data?.userRegistrationTrend && data.userRegistrationTrend.length > 0)
+    ? data.userRegistrationTrend
+    : [
+        { date: 'Today', newUsers: data?.summary?.totalUsers || 0, cumulativeUsers: data?.summary?.totalUsers || 0 }
+      ];
 
-  const refData = data?.referralGrowthTrend || [
-    { date: 'Day 1', level1Referrals: 3, level2Referrals: 1, totalCumulativeReferrals: 4 },
-    { date: 'Day 2', level1Referrals: 5, level2Referrals: 2, totalCumulativeReferrals: 11 },
-    { date: 'Day 3', level1Referrals: 8, level2Referrals: 3, totalCumulativeReferrals: 22 },
-    { date: 'Day 4', level1Referrals: 11, level2Referrals: 4, totalCumulativeReferrals: 37 },
-    { date: 'Day 5', level1Referrals: 14, level2Referrals: 6, totalCumulativeReferrals: 57 },
-    { date: 'Day 6', level1Referrals: 16, level2Referrals: 7, totalCumulativeReferrals: 80 },
-    { date: 'Day 7', level1Referrals: 20, level2Referrals: 9, totalCumulativeReferrals: 109 }
-  ];
+  const refData = (data?.referralGrowthTrend && data.referralGrowthTrend.length > 0)
+    ? data.referralGrowthTrend
+    : [
+        { date: 'Today', level1Referrals: data?.summary?.totalReferrals || 0, level2Referrals: 0, totalCumulativeReferrals: data?.summary?.totalReferrals || 0 }
+      ];
 
-  const finData = data?.financialVolumeTrend || [
-    { date: 'Day 1', commissionsPaidUGX: 70000, depositsVolumeUGX: 300000, withdrawalsVolumeUGX: 90000 },
-    { date: 'Day 2', commissionsPaidUGX: 105000, depositsVolumeUGX: 450000, withdrawalsVolumeUGX: 150000 },
-    { date: 'Day 3', commissionsPaidUGX: 140000, depositsVolumeUGX: 600000, withdrawalsVolumeUGX: 210000 },
-    { date: 'Day 4', commissionsPaidUGX: 195000, depositsVolumeUGX: 850000, withdrawalsVolumeUGX: 280000 },
-    { date: 'Day 5', commissionsPaidUGX: 230000, depositsVolumeUGX: 1000000, withdrawalsVolumeUGX: 350000 },
-    { date: 'Day 6', commissionsPaidUGX: 280000, depositsVolumeUGX: 1200000, withdrawalsVolumeUGX: 420000 },
-    { date: 'Day 7', commissionsPaidUGX: 350000, depositsVolumeUGX: 1500000, withdrawalsVolumeUGX: 520000 }
-  ];
+  const finData = (data?.financialVolumeTrend && data.financialVolumeTrend.length > 0)
+    ? data.financialVolumeTrend
+    : [
+        { date: 'Today', commissionsPaidUGX: data?.summary?.totalCommissionsUGX || 0, depositsVolumeUGX: 0, withdrawalsVolumeUGX: 0 }
+      ];
 
-  const totalCommissions = data?.summary?.totalCommissionsUGX || 1270000;
-  const totalUsers = data?.summary?.totalUsers || 86;
-  const totalReferrals = data?.summary?.totalReferrals || 109;
+  const totalCommissions = data?.summary?.totalCommissionsUGX ?? 0;
+  const totalUsers = data?.summary?.totalUsers ?? 0;
+  const totalReferrals = data?.summary?.totalReferrals ?? 0;
 
   return (
     <div className="space-y-6 animate-fade-in pb-8">
@@ -444,7 +431,7 @@ export const AdminAnalyticsTab: React.FC = () => {
             <span className="text-slate-400 text-[10px] block font-semibold uppercase">Referral Payouts</span>
             <p className="text-xs font-bold text-white mt-0.5">35% L1 & 6% L2</p>
             <p className="text-[11px] text-slate-400 mt-1">
-              Commissions are automatically distributed upon referral deposit (min deposit UGX 10,000).
+              Commissions are automatically distributed upon referral deposit (min deposit UGX 500).
             </p>
           </div>
           <div className="p-3 rounded-xl bg-slate-800/70 border border-slate-700/60">

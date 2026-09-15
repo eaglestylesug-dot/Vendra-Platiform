@@ -26,7 +26,7 @@
       "id": "VEN-ADM-VENDRA",
       "phone": "VendraAdmin",
       "username": "VendraAdmin",
-      "password_hash": "$2b$10$BqjTWZxBLg0sRXnf1LpXL.c.ddCcuW6w5pde8y03I2Bdx7im1n0gy",
+      "password_hash": "$2b$10$VrwLRO0R3wTs.p8C.TV5UOzNDzqced9KuyT8hkMCGI8/n3vTCdG1O",
       "role": "super_admin",
       "referral_code": "VENDRAADM",
       "referred_by_id": null,
@@ -265,10 +265,62 @@
       "status": "PENDING",
       "created_at": "2026-09-06T20:19:33.224Z",
       "confirmed_at": null
+    },
+    {
+      "id": "dep-1789395462631",
+      "user_id": "VEN-ADM-VENDRA",
+      "amount": 10000,
+      "provider": "PESAPAL",
+      "phone_number": "+256771234567",
+      "reference": "DEP-1789395462631-587",
+      "gateway_reference": "f21f500d-fdbb-492c-b6a9-d9e7277c8fe0",
+      "pesapal_order_tracking_id": "f21f500d-fdbb-492c-b6a9-d9e7277c8fe0",
+      "pesapal_redirect_url": "https://pay.pesapal.com/iframe/PesapalIframe3/Index?OrderTrackingId=f21f500d-fdbb-492c-b6a9-d9e7277c8fe0",
+      "status": "PENDING",
+      "created_at": "2026-09-14T14:17:42.631Z",
+      "confirmed_at": null
+    },
+    {
+      "id": "dep-1789453959501",
+      "user_id": "VEN-ADM-VENDRA",
+      "amount": 500,
+      "provider": "PESAPAL",
+      "phone_number": "+256771234567",
+      "reference": "DEP-1789453959501-154",
+      "gateway_reference": "10e70708-9ac3-4ab5-9361-d9e65dc94cac",
+      "pesapal_order_tracking_id": "10e70708-9ac3-4ab5-9361-d9e65dc94cac",
+      "pesapal_redirect_url": "https://pay.pesapal.com/iframe/PesapalIframe3/Index?OrderTrackingId=10e70708-9ac3-4ab5-9361-d9e65dc94cac",
+      "status": "PENDING",
+      "created_at": "2026-09-15T06:32:39.501Z",
+      "confirmed_at": null
     }
   ],
   "withdrawals": [],
   "transactions": [
+    {
+      "id": "tx-1789453959501-157",
+      "user_id": "VEN-ADM-VENDRA",
+      "amount": 500,
+      "transaction_type": "DEPOSIT",
+      "reference": "DEP-1789453959501-154",
+      "status": "PENDING",
+      "source": "PESAPAL_GATEWAY",
+      "description": "Deposit via PesaPal (Card / MoMo / Airtel) (+256771234567)",
+      "audit_info": "{\"provider\":\"PESAPAL\",\"phoneNumber\":\"+256771234567\",\"gatewayRef\":\"GW-DEP-1789453959501-154\"}",
+      "created_at": "2026-09-15T06:32:39.501Z"
+    },
+    {
+      "id": "tx-1789395462631-5120",
+      "user_id": "VEN-ADM-VENDRA",
+      "amount": 10000,
+      "transaction_type": "DEPOSIT",
+      "reference": "DEP-1789395462631-587",
+      "status": "PENDING",
+      "source": "PESAPAL_GATEWAY",
+      "description": "Deposit via PesaPal (Card / MoMo / Airtel) (+256771234567)",
+      "audit_info": "{\"provider\":\"PESAPAL\",\"phoneNumber\":\"+256771234567\",\"gatewayRef\":\"GW-DEP-1789395462631-587\"}",
+      "created_at": "2026-09-14T14:17:42.631Z"
+    },
     {
       "id": "tx-1789286773166-3239",
       "user_id": "VEN-121952",
@@ -371,6 +423,28 @@
   ],
   "audit_logs": [
     {
+      "id": "audit-1789453959502-750",
+      "actor_id": "VEN-ADM-VENDRA",
+      "actor_role": "user",
+      "action": "DEPOSIT_INITIATED",
+      "entity_type": "deposits",
+      "entity_id": "dep-1789453959501",
+      "details": "Initiated UGX 500 deposit via PESAPAL",
+      "ip_address": "127.0.0.1",
+      "created_at": "2026-09-15T06:32:39.502Z"
+    },
+    {
+      "id": "audit-1789395462632-794",
+      "actor_id": "VEN-ADM-VENDRA",
+      "actor_role": "user",
+      "action": "DEPOSIT_INITIATED",
+      "entity_type": "deposits",
+      "entity_id": "dep-1789395462631",
+      "details": "Initiated UGX 10000 deposit via PESAPAL",
+      "ip_address": "127.0.0.1",
+      "created_at": "2026-09-14T14:17:42.632Z"
+    },
+    {
       "id": "audit-1789286773167-935",
       "actor_id": "VEN-121952",
       "actor_role": "user",
@@ -405,15 +479,15 @@
     }
   ],
   "platform_settings": {
-    "min_deposit_ugx": "10000",
+    "min_deposit_ugx": "500",
     "min_withdrawal_ugx": "5000",
     "max_withdrawal_ugx": "5000000",
     "l1_referral_percentage": "35.0",
     "l2_referral_percentage": "6.0",
-    "referral_eligibility_min_deposit": "10000",
+    "referral_eligibility_min_deposit": "500",
     "welcome_bonus_ugx": "5000",
     "maintenance_mode": "false",
-    "momo_gateway_mode": "sandbox",
+    "momo_gateway_mode": "live",
     "whatsapp_support_url": "https://wa.me/qr/C3VMQ7Y7TXH6B1",
     "telegram_channel_url": "https://t.me/vendraplatiform",
     "platform_announcement": "Welcome to VENDRA Commercial Platform. Earn 35% Level 1 & 6% Level 2 referral commissions on member deposits."

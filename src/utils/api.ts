@@ -36,7 +36,8 @@ export async function apiRequest<T = any>(endpoint: string, options: RequestInit
   const token = localStorage.getItem('vendra_auth_token');
 
   const headers = new Headers(options.headers || {});
-  if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
+  // Only attach Content-Type if there is a request body and it's not FormData
+  if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
   if (token && !headers.has('Authorization')) {
@@ -48,16 +49,30 @@ export async function apiRequest<T = any>(endpoint: string, options: RequestInit
     ? endpoint 
     : `/${endpoint}`;
 
-  let response: Response;
-  try {
-    response = await fetch(normalizedEndpoint, {
-      ...options,
-      headers
-    });
-  } catch (networkError: any) {
-    console.error(`[API Network Error] Failed to reach ${normalizedEndpoint}:`, networkError);
+  let response: Response | undefined;
+  let lastNetworkError: any = null;
+
+  // Retry up to 3 times for transient connection drops/cold-starts
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      response = await fetch(normalizedEndpoint, {
+        ...options,
+        headers
+      });
+      break;
+    } catch (networkError: any) {
+      lastNetworkError = networkError;
+      if (attempt < 2) {
+        // Wait 250ms, 500ms before retrying
+        await new Promise(res => setTimeout(res, 250 * (attempt + 1)));
+      }
+    }
+  }
+
+  if (!response) {
+    console.error(`[API Network Error] Failed to reach ${normalizedEndpoint}:`, lastNetworkError);
     throw new ApiError(
-      networkError.message || 'Network connection error. Please verify your internet connection.',
+      lastNetworkError?.message || 'Network connection error. Please verify your internet connection.',
       0,
       'NETWORK_ERROR',
       normalizedEndpoint

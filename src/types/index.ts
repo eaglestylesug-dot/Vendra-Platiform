@@ -82,6 +82,16 @@ export interface ProductPurchase {
   total_accrued_reward?: number;
   last_accrual_at?: string | null;
   created_at: string;
+  // 24-Hour Server-Side Profit Generation Fields
+  activated_at?: string;
+  next_profit_due_at?: string;
+  profit_status?: 'PENDING_24H' | 'DUE' | 'PROCESSED' | 'CYCLE_FINISHED';
+  cycles_completed?: number;
+  last_processed_transaction_id?: string | null;
+  // PesaPal Payment Verification Fields
+  pesapal_tracking_id?: string | null;
+  pesapal_reference?: string | null;
+  payment_method?: 'PESAPAL' | 'BALANCE';
 }
 
 export interface Deposit {
